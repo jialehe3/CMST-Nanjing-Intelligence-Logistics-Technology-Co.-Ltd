@@ -1,0 +1,26 @@
+#order表：
+select count(*),count(order_id),max(created_time),min(created_time) from ods_oms_tf_b_order;
+
+#WORK_ORDER表：
+select count(*),count(order_id) from ods_oms_tf_b_work_order;
+
+#user表：
+select count(*),count(user_id),max(created_time),min(created_time) from ods_mms_tf_f_user;
+
+#customer 表：
+select count(*),count(customer_id),max(created_time),min(created_time) from ods_mms_tf_f_customer;
+
+#财务order表：
+select count(*),count(order_id),max(created_time),min(created_time) from ods_ams_tf_b_order;
+
+#财务sub_order：
+select count(*),count(order_id),max(created_time),min(created_time) from ods_ams_tf_b_sub_order;
+
+#carrier_state/consignor_state表：
+select count(id),count(*),count(order_id) from ods_oms_tf_b_carrier_state;
+select count(id),count(*),count(order_id) from ods_oms_tf_b_consignor_state;
+
+#transport/transport_receipt表：
+select count(*),count(order_id),max(created_time),min(created_time) from ods_oms_tf_b_transport;
+select count(*),count(order_id),max(created_time),min(created_time) from ods_oms_tf_b_transport_receipt;
+
