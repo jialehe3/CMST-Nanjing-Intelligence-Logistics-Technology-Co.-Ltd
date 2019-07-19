@@ -1,0 +1,209 @@
+drop table if exists hjl_work01;
+create table hjl_work01 as
+select DISTINCT a.order_ID, a.plate_number, b.user_type, b.user_ID, c.vehicle_load, c.vehicle_length 
+from (ods_oms_tf_b_transport as a
+inner join ods_mms_tf_f_user as b on a.driver_user_ID = b.user_ID)
+INNER JOIN ods_mms_tf_f_vehicle as c on a.driver_user_ID = c.USER_ID;
+
+drop table if exists hjl_work02;
+create table hjl_work02 as
+select DISTINCT t1.ORDER_ID,t1.created_time, t2.delist_time,t1.order_model,t3.plate_number, t3.vehicle_load, t3.vehicle_length,t4.layer1_name,t5.despatch_pro,t5.despatch_city,t5.deliver_pro,t5.deliver_city,t1.distance,t4.cargo_length,t4.cargo_width,t4.cargo_height,t1.weight,t1.PB_consignor_display_money,t1.DEAL_FLAG,t3.user_type
+from (((ods_oms_tf_b_order as t1
+INNER JOIN ods_oms_tf_b_order_delist as t2 on t1.ORDER_ID = t2.ORDER_ID)
+INNER JOIN hjl_work01 as t3 on t1.order_ID = t3.order_ID)
+INNER JOIN ods_oms_tf_b_cargo as t4 on t1.order_ID = t4.ORDER_ID)
+INNER JOIN ods_oms_tf_b_order_address as t5 on t1.order_ID = t5.ORDER_ID;
+
+drop table if exists hjl_work03;
+create table hjl_work03 as
+select * from hjl_work02
+where date(created_time) >= '2019-05-01'
+and date(created_time) <= '2019-05-30'
+and deal_flag = 1
+and user_type = 2
+and order_id like '1%'
+
+# 随机抽取特定组别的数据
+drop table if exists hjl_work04;
+create table hjl_work04 as
+(SELECT distinct order_ID FROM hjl_work03
+where layer1_name = '非金属矿石'
+and order_model = 0
+order by rand()
+limit 80)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '肥料及农药'
+and order_model = 0
+order by rand()
+limit 15)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '钢铁'
+and order_model = 0
+order by rand()
+limit 100)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '钢铁'
+and order_model = 1
+order by rand()
+limit 100)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '化工原料及制品'
+and order_model = 0
+order by rand()
+limit 15)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '机械设备、电器'
+and order_model = 0
+order by rand()
+limit 23)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '机械设备、电器'
+and order_model = 1
+order by rand()
+limit 2)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '金属矿石'
+and order_model = 0
+order by rand()
+limit 200)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '矿物性建筑材料'
+and order_model = 0
+order by rand()
+limit 10)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '矿物性建筑材料'
+and order_model = 1
+order by rand()
+limit 40)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '粮食'
+and order_model = 0
+order by rand()
+limit 15)
+UNION
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '煤炭及制品'
+and order_model = 0
+order by rand()
+limit 210)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '木材'
+and order_model = 0
+order by rand()
+limit 10)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '农、林、牧、渔业产品'
+and order_model = 0
+order by rand()
+limit 15)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '轻工、医药产品'
+and order_model = 0
+order by rand()
+limit 45)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '轻工、医药产品'
+and order_model = 1
+order by rand()
+limit 15)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '石油、天然气及制品'
+and order_model = 0
+order by rand()
+limit 20)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '水泥'
+and order_model = 0
+order by rand()
+limit 5)
+UNION
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '盐'
+and order_model = 0
+order by rand()
+limit 20)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '有色金属'
+and order_model = 0
+order by rand()
+limit 30)
+union
+(select DISTINCT order_ID from hjl_work03
+where layer1_name = '有色金属'
+and order_model = 1
+order by rand()
+limit 30)
+
+drop table if exists hjl_work05;
+create table hjl_work_f as
+select * from hjl_work03 as h03
+inner join hjl_work04 as h04
+on h03.order_ID = h04.order_ID1
+order by h03.layer1_name, h03.order_model
+
+# 使车牌，载重，车长为唯一
+drop table if exists hjl_work_f2;
+create table hjl_work_f2 as
+select plate_number,MAX(vehicle_load)as vehicle_load,max(vehicle_length)as vehicle_length 
+from ods_mms_tf_f_vehicle 
+GROUP BY PLATE_NUMBER
+
+
+drop table if exists hjl_work_f3;
+create table hjl_work_f3 as
+select distinct hf.ORDER_ID,
+hf.created_time,
+hf.delist_time,
+hf.order_model,
+hf.plate_number,
+v.vehicle_load as vehicle_load,
+v.vehicle_length as vehicle_length,
+hf.layer1_name,
+hf.despatch_pro,
+hf.despatch_city,
+hf.deliver_pro,
+hf.deliver_city,
+hf.distance,
+hf.cargo_length,
+hf.cargo_width,
+hf.cargo_height,
+hf.weight,
+hf.PB_consignor_display_money,
+hf.DEAL_FLAG,
+hf.user_type
+from hjl_work_f as hf
+inner join hjl_work_f2 as v
+on hf.plate_number = v.plate_number
+order by hf.layer1_name, hf.order_model
+
+
+
+
+# 查看列名
+desc hjl_work_f3
+# 数行数
+select count(order_ID) from hjl_work_f3
+# 查重
+select  order_ID,count(1) from hjl_work_f3 group by order_id having count(1) > 1
+# 查看具体重复项
+select * from hjl_work_f3
+where order_ID in ('101905051439035052','101905211108537464')
+order by order_ID
