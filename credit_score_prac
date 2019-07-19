@@ -1,0 +1,116 @@
+USE pre_ods;
+select * from gl_drscr_score_20190428 LIMIT 100;
+CREATE INDEX idx_user_id ON gl_drscr_score_20190428(user_id);
+
+select count(1) from gl_drscr_score_20190428; #451337
+
+select count(1) from gl_drscr_score_20190428 where score >= 570; # 316688
+
+select count(1) from gl_drscr_score_20190428 where score >= 570 AND succ_order_cnt_12m > 0; #167643
+#select * from gl_drscr_score_20190428 where score >= 570 AND succ_order_cnt_12m = 0 LIMIT 10000
+
+
+##################################################################################################################
+SET @startdate = '2018-04-15';
+SET @enddate = '2019-04-15';
+
+select * from yp_drscr_order_all_score where user_id = '2468'
+
+DROP TABLE if EXISTS yp_temp01;
+CREATE TABLE yp_temp01 as
+select t1.*, t2.despatch_city,t2.deliver_city
+from ods_oms_tf_b_transport t1 
+LEFT JOIN ods_oms_tf_b_order_address t2 ON t1.order_id = t2.order_id 
+where STATE = '7'
+;
+ALTER TABLE yp_temp01 ADD INDEX idx_user_id(driver_user_id), ADD INDEX idx_despatch_city(despatch_city),ADD INDEX idx_deliver_city(deliver_city);
+
+SELECT yp1.driver_user_id, t1.ORDER_ID
+FROM yp_temp01 as yp1
+left join ods_oms_tf_b_order as t1
+on yp1.order_id = t1.order_id
+
+# 货主数量 cnsnr_cnt_12m
+DROP TABLE if EXISTS yp_temp01_a;
+CREATE TABLE yp_temp01_a as
+SELECT yp1.driver_user_id, count(DISTINCT t1.consignor_user_id) as cnsnr_cnt_12m
+FROM yp_temp01 as yp1
+left join ods_oms_tf_b_order as t1
+on yp1.order_id = t1.order_id
+WHERE yp1.created_time >= '2019-01-01'
+GROUP BY driver_user_id;
+
+DROP TABLE if EXISTS yp_temp01_b;
+CREATE TABLE yp_temp01_b as
+SELECT yp1.driver_user_id, count(DISTINCT t1.consignor_user_id) as cnsnr_cnt_12m
+FROM yp_temp01 as yp1
+left join ods_oms_tf_b_order as t1
+on yp1.order_id = t1.order_id
+WHERE yp1.created_time >= '2019-01-01'
+GROUP BY driver_user_id;
+
+# 路线数
+Drop table if exists yp_temp01_c;
+CREATE TABLE yp_temp01_c as
+SELECT DISTINCT driver_user_id, despatch_city, deliver_city FROM yp_temp01
+WHERE created_time >= '2019-01-01';
+ALTER TABLE yp_temp01_c ADD INDEX idx_user_id(driver_user_id), ADD INDEX idx_despatch_city(despatch_city),ADD INDEX idx_deliver_city(deliver_city);
+
+DROP TABLE if EXISTS yp_temp01_d;
+CREATE TABLE yp_temp01_d as
+SELECT DISTINCT t1.driver_user_id, t1.despatch_city, t1.deliver_city , t2.despatch_city as despatch_city_2, t2.deliver_city as deliver_city_2
+FROM yp_temp01_c t1 left join yp_temp01_c t2 on t1.driver_user_id = t2.driver_user_id 
+;
+SELECT * from yp_temp01_d LIMIT 100;
+
+DROP TABLE if EXISTS yp_temp01_e;
+CREATE TABLE yp_temp01_e as
+SELECT DISTINCT t1.driver_user_id, case when MOD(flag,2)=0 then cnt - flag/2 ELSE cnt - (flag-1)/2 end as route_cnt 
+FROM(SELECT driver_user_id,  sum(flag) as flag 
+			from(SELECT *, case when despatch_city = deliver_city_2 and deliver_city = despatch_city_2 then 1 else 0 end as flag from yp_temp01_d)t0
+		GROUP BY driver_user_id) t1
+LEFT JOIN (SELECT driver_user_id, count(1) as cnt from yp_temp01_d GROUP BY driver_user_id, despatch_city, deliver_city) t2 
+on t1.driver_user_id = t2.driver_user_id
+;
+SELECT * from yp_temp01_e LIMIT 100;
+
+
+# 合并
+CREATE INDEX idx_user_id ON yp_temp01_a(driver_user_id);
+CREATE INDEX idx_user_id ON yp_temp01_e(driver_user_id);
+
+DROP TABLE if EXISTS yp_temp_score;
+CREATE TABLE yp_temp_score AS
+select t1.*, t2.cnsnr_cnt_12m, t3.route_cnt as route_cnt_12m
+		,CASE WHEN score >= 590 then '1安全' 
+		when score >= 570 and score < 590 then '2低风险'
+		when score >= 550 and score < 570 then '3中等风险'
+		when score < 550 then '4高风险'
+		END AS band 
+from drsc_score_info t1 
+INNER JOIN yp_temp01_a t2 on t1.user_id = t2.driver_user_id
+LEFT JOIN yp_temp01_e t3 on t1.user_id = t3.driver_user_id
+;
+SELECT * from yp_temp_score LIMIT 100;
+SELECT count(1) from yp_temp_score; #292601
+
+##################################################################################################################
+select count(1) from yp_temp_score where score >= 570 AND succ_order_cnt_12m > 0; #167643
+SELECT band, count(1) FROM yp_temp_score GROUP BY band;
+SELECT band, driver_breach_cnt_12m2,count(1) FROM (SELECT *,case when driver_breach_cnt_12m >= 3 then '>=3' else driver_breach_cnt_12m end as driver_breach_cnt_12m2 from yp_temp_score)t GROUP BY band,driver_breach_cnt_12m2;
+
+
+SELECT band, cnsnr_cnt_12m, count(1) FROM yp_temp_score GROUP BY band, cnsnr_cnt_12m;
+SELECT band,cnsnr_cnt_12m2,count(1) FROM(SELECT *, case when cnsnr_cnt_12m > 2 then '>2' else cnsnr_cnt_12m end as cnsnr_cnt_12m2 FROM yp_temp_score)t GROUP BY band, cnsnr_cnt_12m2;
+
+SELECT band, route_cnt_12m, count(1) FROM yp_temp_score GROUP BY band, route_cnt_12m;
+SELECT band,route_cnt_12m2,count(1) FROM(SELECT *, case when route_cnt_12m > 2 then '>2' else route_cnt_12m end as route_cnt_12m2 FROM yp_temp_score)t GROUP BY band, route_cnt_12m2;
+
+select * from yp_temp_score where band = '1安全' AND route_cnt_12m is null; 
+
+select count(1) from yp_temp_score where band = '1安全' AND succ_order_cnt_12m and cnsnr_cnt_12m > 2; 
+#17969
+
+select count(1) from yp_temp_score where band = '1安全'
+		AND succ_order_cnt_12m and cnsnr_cnt_12m > 2 and route_cnt_12m > 2
+#12516
