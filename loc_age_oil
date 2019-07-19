@@ -1,0 +1,155 @@
+#预付起始
+select * from ods_oms_tf_b_order
+where SPECIFY_FLAG = 0
+and ADVANCE_FLAG = 1
+and CREATED_TIME < DATE("2018-06-29")
+
+
+
+#司机
+drop table if exists hjl_prepay_dv1;
+create table hjl_prepay_dv1 as
+select cus.customer_nm, odr.created_time, cus.ID_card_no, usr.USER_TYPE
+from ((ods_mms_tf_f_user as usr
+inner join ods_mms_tf_f_customer as cus
+on usr.customer_ID = cus.customer_ID)
+inner join ods_oms_tf_b_transport as tsp
+on tsp.driver_user_id = usr.user_id)
+INNER JOIN ods_oms_tf_b_order as odr
+on tsp.order_ID = odr.order_ID
+where odr.CREATED_TIME >= DATE('2018-06-01')
+and odr.CREATED_TIME <= DATE('2019-07-15')
+and odr.advance_flag = 1
+and usr.user_type = 2
+
+drop table if exists hjl_prepay_dv2;
+create table hjl_prepay_dv2 as
+select customer_nm, created_time, ID_card_no, USER_TYPE, 
+case left(id_card_no,2) 
+when '11' then '北京市'
+when '12' then '天津市'
+when '13' then '河北省'
+when '14' then '山西省'
+when '15' then '内蒙古自治区'
+when '21' then '辽宁省'
+when '22' then '吉林省'
+when '23' then '黑龙江省'
+when '31' then '上海市'
+when '32' then '江苏省'
+when '33' then '浙江省'
+when '34' then '安徽省'
+when '35' then '福建省'
+when '36' then '江西省'
+when '37' then '山东省'
+when '41' then '河南省'
+when '42' then '湖北省'
+when '43' then '湖南省'
+when '44' then '广东省'
+when '45' then '广西壮族自治区'
+when '46' then '海南省'
+when '50' then '重庆市'
+when '51' then '四川省'
+when '52' then '贵州省'
+when '53' then '云南省'
+when '54' then '西藏自治区'
+when '61' then '陕西省'
+when '62' then '甘肃省'
+when '63' then '青海省'
+when '64' then '宁夏回族自治区'
+when '65' then '新疆维吾尔自治区'
+when '71' then '台湾省'
+when '81' then '香港特别行政区'
+when '82' then '澳门特别行政区'
+else '未知'     
+end as loc
+from hjl_prepay_dv1;
+
+drop table if exists hjl_prepay_dv3;
+create table hjl_prepay_dv3
+select loc, count(loc) as freq, count(loc)/64279*100 as percentage
+from hjl_prepay_dv2
+GROUP BY loc
+
+
+
+#收货人
+drop table if exists hjl_prepay_cns1;
+create table hjl_prepay_cns1 as
+select odr.created_time, odr.consignor_user_id, odr.consignor_user_name, ads.despatch_pro, ads.despatch_city, ads.despatch_dis, ads.despatch_place,
+ads.deliver_pro, ads.deliver_city, ads.deliver_dis, ads.deliver_place
+from ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_order_address as ads
+on odr.order_ID = ads.order_ID
+where odr.CREATED_TIME >= DATE('2018-06-01')
+and odr.CREATED_TIME <= DATE('2019-07-15')
+and odr.advance_flag = 1
+
+select count(*) from hjl_prepay_cns1
+
+drop table if exists hjl_prepay_cns1_1;
+create table hjl_prepay_cns1_1 as
+select despatch_pro, count(despatch_pro) as despatch_pro_freq, count(despatch_pro)/64467*100 as despatch_pro_percent
+from hjl_prepay_cns1
+GROUP BY DESPATCH_PRO
+
+drop table if exists hjl_prepay_cns1_2;
+create table hjl_prepay_cns1_2 as
+select deliver_pro, count(deliver_pro) as deliver_pro_freq, count(despatch_pro)/64467*100 as deliver_pro_percent
+from hjl_prepay_cns1
+GROUP BY deliver_pro
+
+
+#司机性别年龄分布
+drop table if exists hjl_prepay_dv2_1;
+create table hjl_prepay_dv2_1
+select customer_nm, created_time, ID_card_no, loc, case 
+if(length(id_card_no)=18, cast(substring(id_card_no,17,1) as UNSIGNED)%2, if(length(id_card_no)=15,cast(substring(id_card_no,15,1) as UNSIGNED)%2,3)) 
+when 1 then '男'
+when 0 then '女'
+else '未知'
+end as sex,
+year(curdate())-if(length(id_card_no)=18,substring(id_card_no,7,4),if(length(id_card_no)=15,concat('19',substring(id_card_no,7,2)),null)) as age  
+from hjl_prepay_dv2;
+
+select count(*) from hjl_prepay_dv2_1
+
+drop table if exists hjl_prepay_dv2_2;
+create table hjl_prepay_dv2_2
+select sex,count(sex) as sex_freq, count(sex)/64279*100 as sex_percentage
+from hjl_prepay_dv2_1
+group by sex
+
+drop table if exists hjl_prepay_dv2_3;
+create table hjl_prepay_dv2_3
+select age,count(age) as age_freq, count(age)/64279*100 as age_percentage
+from hjl_prepay_dv2_1
+group by age
+
+#油品
+drop table if EXISTS hjl_prepay_oil;
+create table hjl_prepay_oil
+select odr.order_ID, odr.consignor_user_name,odr.consignor_company, tsp.driver_user_name, tsp.driver_mobile, odr.distance, 
+odr.PB_carrier_money, adv.advance_money, adv.service_money, (adv.advance_money - adv.service_money) as rest_money,
+adv.advance_ratio, adv.created_time, cst.consignor_settle_time, cfg.oil_card_money
+from ((((ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_transport as tsp
+on odr.order_ID = tsp.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID)
+inner join ods_oms_tf_b_consignor_state as cst
+on odr.order_ID = cst.order_ID)
+inner join ods_mms_tf_f_user as usr
+on tsp.driver_user_id = usr.User_id)
+INNER JOIN ods_oms_tf_b_order_config as cfg
+on odr.order_ID = cfg.order_ID
+where odr.CREATED_TIME >= DATE('2018-11-01')
+and odr.CREATED_TIME <= DATE('2019-07-15')
+and odr.advance_flag = 1
+and usr.user_type = 2
+
+# 按照月份预付单量
+drop table if exists hjl_prepay_oil_odr;
+create table hjl_prepay_oil_odr as
+select created_time, count(order_ID)
+from hjl_prepay_oil
+GROUP BY SUBSTRING(created_time,1,7)
