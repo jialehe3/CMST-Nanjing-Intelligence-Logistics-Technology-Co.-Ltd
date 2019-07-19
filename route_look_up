@@ -1,0 +1,40 @@
+use pre_ods;
+drop table if exists yp_temp_01;
+CREATE table yp_temp_01 as
+select distinct t1.user_id, t2.customer_id, t1.province_name, t1.market_area_name, t2.company_name
+from (SELECT user_id, customer_id, province_name, market_area_name from ods_mms_tf_f_user where user_type = '1') t1
+left join (select customer_id,company_name from ods_mms_tf_f_customer  where company_name NOT regexp 'ceshi' and company_name NOT regexp '测试') t2 on t1.customer_id = t2.customer_id
+;
+CREATE INDEX idx_user_id on yp_temp_01(user_id);
+SELECT count(1) from yp_temp_01; #6391
+
+drop table if exists yp_temp_02;
+CREATE table yp_temp_02 as
+SELECT CONSIGNOR_USER_ID as user_id, substr(min(created_time) FROM 1 FOR 7) as first_order_date 
+FROM ods_oms_tf_b_order 
+WHERE deal_flag = '1' and CONSIGNOR_STATE = '7' and DELETE_FLAG = '0' 
+group by CONSIGNOR_USER_ID;
+CREATE INDEX idx_user_id on yp_temp_02(user_id)
+;
+
+drop table if exists yp_temp_03;
+CREATE TABLE yp_temp_03 AS 
+SELECT CONSIGNOR_USER_ID, SUBSTR(CREATED_TIME FROM 1 FOR 7) AS order_month, SUM(PB_CONSIGNOR_MONEY) as sum_PB_CONSIGNOR_MONEY
+FROM(SELECT DISTINCT CONSIGNOR_USER_ID, PB_CONSIGNOR_MONEY, created_time, order_id 
+			FROM ods_oms_tf_b_order 
+			WHERE deal_flag = '1' and CONSIGNOR_STATE = '7' and DELETE_FLAG = '0' and (DATE(created_time) BETWEEN '2018-01-01' and '2018-12-31'))t
+GROUP BY CONSIGNOR_USER_ID,SUBSTR(CREATED_TIME FROM 1 FOR 7);
+CREATE INDEX idx_CONSIGNOR_USER_ID on yp_temp_03(CONSIGNOR_USER_ID)
+;
+SELECT * from yp_temp_03 LIMIT 100
+
+drop table if exists yp_temp_04;
+CREATE TABLE yp_temp_04 AS 
+SELECT distinct t1.user_id as CONSIGNOR_USER_ID, t1.company_name, t1.province_name, t1.market_area_name, t2.first_order_date 
+FROM yp_temp_01 t1
+LEFT JOIN yp_temp_02 t2 on t1.user_id = t2.user_id
+where first_order_date is not NULL
+;
+SELECT * from yp_temp_04 LIMIT 100;
+
+
