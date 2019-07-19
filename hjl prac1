@@ -1,0 +1,47 @@
+create table hjl_temp01 as
+select temp04.*,temp03.order_month, temp03.sum_PB_CONSIGNOR_MONEY
+from yp_temp_04 as temp04
+inner join yp_temp_03 as temp03
+on temp04.CONSIGNOR_USER_ID = temp03.CONSIGNOR_USER_ID
+group by CONSIGNOR_USER_ID;
+
+create table hjl_temp02 as 
+select order_month, sum(sum_PB_CONSIGNOR_MONEY) as MONEYSUM
+from yp_temp_03
+group by order_month;
+
+create table hjl_temp03 as
+select consignor_user_id,
+sum(case order_month when '2018-01' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_01',
+sum(case order_month when '2018-02' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_02',
+sum(case order_month when '2018-03' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_03',
+sum(case order_month when '2018-04' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_04',
+sum(case order_month when '2018-05' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_05',
+sum(case order_month when '2018-06' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_06',
+sum(case order_month when '2018-07' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_07',
+sum(case order_month when '2018-08' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_08',
+sum(case order_month when '2018-09' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_09',
+sum(case order_month when '2018-10' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_10',
+sum(case order_month when '2018-11' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_11',
+sum(case order_month when '2018-12' then sum_PB_CONSIGNOR_MONEY else 0 end) as '2018_12'
+from yp_temp_03
+group by CONSIGNOR_USER_ID
+
+create table hjl_temp04 as
+select h01.consignor_user_id, h01.company_name,h01.province_name,h01.market_area_name,h01.first_order_date,
+h03.2018_01,
+h03.2018_02,
+h03.2018_03,
+h03.2018_04,
+h03.2018_05,
+h03.2018_06,
+h03.2018_07,
+h03.2018_08,
+h03.2018_09,
+h03.2018_10,
+h03.2018_11,
+h03.2018_12
+from hjl_temp01 as h01
+inner join hjl_temp03 as h03
+on h01.consignor_user_id = h03.consignor_user_id
+
