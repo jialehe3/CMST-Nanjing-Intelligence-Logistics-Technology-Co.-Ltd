@@ -1,0 +1,67 @@
+# 5月1号 各小时成交订单，成交额，成交吨位
+create table hjl_lookup2 as
+select delist_hour, COUNT(DISTINCT order_ID) as deal_count, sum(PB_CONSIGNOR_DISPLAY_MONEY) as moneysum , sum(weight) as weightsum
+from (select odr.ORDER_ID, odr.PB_CONSIGNOR_DISPLAY_MONEY, odr.weight, HOUR(delist.delist_time) as delist_hour, delist.DELIST_TIME
+from ods_oms_tf_b_order as odr 
+inner join ods_oms_tf_b_order_delist as delist
+on odr.order_ID = delist.order_ID
+where delist.delist_time >= date('2019-05-01') and delist.DELIST_TIME < date('2019-05-02')
+and DEAL_FLAG = 1
+order by delist_hour) as may01
+GROUP BY delist_hour
+
+#平台收货人和发货人
+select count(DISTINCT deliver_name) as '收货人',count(distinct despatch_name) as '发货人' 
+from ods_oms_tf_b_order_address
+
+drop table if exists hjl_lookup3_1;
+create TABLE hjl_lookup3_1 as
+select odr.order_ID, odr.CONSIGNOR_MOBILE, ads.despatch_mobile, ads.DESPATCH_NAME, ads.deliver_mobile, ads.DELIVER_NAME
+from ods_oms_tf_b_order_address as ads
+inner join ods_oms_tf_b_order as odr
+on ads.order_ID = odr.order_iD
+
+drop table if exists hjl_lookup3_2;
+create table hjl_lookup3_2 as
+select consignor_mobile, count(DISTINCT deliver_mobile) as 'deliver',count(distinct despatch_mobile) as 'despatch'
+from hjl_lookup3_1
+group by CONSIGNOR_MOBILE
+
+#对应多个收货人姓名的收货人联系电话占比
+select (select count(cnt.c_deliver)
+from (select deliver_mobile, count(distinct deliver_name) as c_deliver
+from hjl_lookup3_1
+GROUP BY deliver_mobile) as cnt
+where c_deliver > 1)/COUNT(cnt.c_deliver)
+from (select deliver_mobile, count(distinct deliver_name) as c_deliver
+from hjl_lookup3_1
+GROUP BY deliver_mobile) as cnt
+
+#对应多个发货人姓名的发货人联系电话占比
+select (select count(cnt.c_despatch)
+from (select despatch_mobile, count(distinct despatch_name) as c_despatch
+from hjl_lookup3_1
+GROUP BY despatch_mobile) as cnt
+where c_despatch > 1)/COUNT(cnt.c_despatch)
+from (select despatch_mobile, count(distinct despatch_name) as c_despatch
+from hjl_lookup3_1
+GROUP BY despatch_mobile) as cnt
+
+order_id not in 
+(select order_Id from ods_oms_tf_b_breach_apply where date(created_time) > 20190301) 
+
+
+select sum(distance), sum(weight)
+from ods_oms_tf_b_order
+where created_time >= date('2018-01-01')
+and deal_flag = 1
+
+
+
+#晨光查询
+select sum(PB_CONSIGNOR_DISPLAY_UNIT_MONEY),count(1) 
+from ods_oms_tf_b_order
+where consignor_company = '晨光生物科技集团股份有限公司'
+and created_time >= DATE('2019-04-01')
+
+
