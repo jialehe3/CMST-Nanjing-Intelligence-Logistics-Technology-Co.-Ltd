@@ -1,0 +1,73 @@
+# 天津到乌兰察布市最早订单时间
+select ads.ORDER_ID, ads.DESPATCH_PRO, ads.despatch_city, ads.DELIVER_PRO, ads.deliver_city, min(ads.CREATED_TIME) as "mintime", odr.consignor_company
+from ods_oms_tf_b_order_address as ads
+inner join ods_oms_tf_b_order as odr
+on ads.order_ID = odr.ORDER_ID
+where despatch_pro = "天津市" and deliver_city = "乌兰察布市"
+group by odr.CONSIGNOR_company
+
+select ads.ORDER_ID, ads.DESPATCH_PRO, ads.despatch_city, ads.DELIVER_PRO, ads.deliver_city, min(ads.CREATED_TIME) as "mintime", odr.consignor_company
+from ods_oms_tf_b_order_address as ads
+inner join ods_oms_tf_b_order as odr
+on ads.order_ID = odr.ORDER_ID
+where despatch_city = "渭南市" and deliver_city = "乌海市"
+group by odr.CONSIGNOR_company
+
+#账户余额为负的货主与司机的名单和余额
+drop table if exists hjl_acc_money_1;
+create table hjl_acc_money_1 as
+select user_ID, max(CREATE_TIME) as "maxtime"
+from ods_ams_tf_b_finance_ord
+group by user_ID
+
+select ordf.ID, t1.user_ID, t1.maxtime, ordf.user_type, ordf.sum_account, ordf.operate_remark
+from
+hjl_acc_money_1 as t1
+inner join ods_ams_tf_b_finance_ord as ordf
+on ordf.user_ID = t1.user_ID 
+where ordf.sum_account < 0
+
+#######################################
+drop table if EXISTS hjl_temp01;
+create table hjl_temp01 as
+select user_id,create_time from ods_ams_tf_b_finance_ord;
+
+create INDEX idx_hjl_temp01_user_id on hjl_temp01(user_id);
+create INDEX idx_hjl_temp01_create_time on hjl_temp01(create_time);
+
+drop table if EXISTS hjl_temp02;
+create table hjl_temp02 as 
+select user_id,max(CREATE_TIME) as CREATE_TIME from hjl_temp01 group by USER_ID;
+
+create index idx_hjl_temp02_user_id on hjl_temp02(user_id);
+create index idx_hjl_temp02_create_time on hjl_temp02(create_time);
+
+drop table if EXISTS hjl_temp03;
+create table hjl_temp03 as
+select id,user_id,SUM_ACCOUNT,create_time,operate_remark,USER_TYPE from ods_ams_tf_b_finance_ord;
+
+create index idx_hjl_temp03_id on hjl_temp03(id);
+create index idx_hjl_temp03_user_id on hjl_temp03(user_id);
+create index idx_hjl_temp03_create_time on hjl_temp03(create_time);
+
+drop table if EXISTS hjl_temp04;
+create table hjl_temp04 as
+select t1.id
+      ,t1.user_id
+      ,t1.SUM_ACCOUNT
+      ,t1.create_time
+      ,t1.operate_remark
+      ,t1.USER_TYPE FROM hjl_temp03 as t1
+INNER JOIN hjl_temp02 as t2 
+on t1.user_id=t2.user_id and t1.create_time = t2.create_time;
+
+create index idx_hjl_temp04_user_id on hjl_temp04(user_id);
+create index idx_hjl_temp04_id on hjl_temp04(id);
+
+drop table if EXISTS hjl_temp05;
+create table hjl_temp05 as 
+select t1.* FROM hjl_temp04 t1
+INNER JOIN
+(select user_id,max(id) as id from hjl_temp04 group by user_id) t2
+on t1.user_id=t2.user_id and t1.id=t2.id
+where t1.sum_account <0;
