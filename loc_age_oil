@@ -125,7 +125,7 @@ select age,count(age) as age_freq, count(age)/64279*100 as age_percentage
 from hjl_prepay_dv2_1
 group by age
 
-#油品
+#油品项目
 drop table if EXISTS hjl_prepay_oil;
 create table hjl_prepay_oil
 select odr.order_ID, odr.consignor_user_name,odr.consignor_company, tsp.driver_user_name, tsp.driver_mobile, odr.distance, 
@@ -147,9 +147,29 @@ and odr.CREATED_TIME <= DATE('2019-07-15')
 and odr.advance_flag = 1
 and usr.user_type = 2
 
+
+
 # 按照月份预付单量
-drop table if exists hjl_prepay_oil_odr;
+drop table if exists hjl_prepay_oil_odr_dv;
 create table hjl_prepay_oil_odr as
 select created_time, count(order_ID)
 from hjl_prepay_oil
 GROUP BY SUBSTRING(created_time,1,7)
+
+
+select count(distinct consignor_user_name) from hjl_prepay_oil_csn
+select count(distinct driver_mobile) from hjl_prepay_oil_dv
+
+drop table if exists hjl_prepay_oil_dv_1;
+create table hjl_prepay_oil_dv_1 as 
+select consignor_user_name, count(order_ID) as order_no
+from hjl_prepay_oil
+GROUP BY consignor_user_name
+
+drop table if exists hjl_prepay_oil_csn_1;
+create table hjl_prepay_oil_csn_1 as
+select consignor_company, count(order_ID) as order_no
+from hjl_prepay_oil
+GROUP BY consignor_company
+
+select despatch_pro
