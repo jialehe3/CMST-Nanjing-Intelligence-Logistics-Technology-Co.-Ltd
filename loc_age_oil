@@ -4,8 +4,6 @@ where SPECIFY_FLAG = 0
 and ADVANCE_FLAG = 1
 and CREATED_TIME < DATE("2018-06-29")
 
-
-
 #司机
 drop table if exists hjl_prepay_dv1;
 create table hjl_prepay_dv1 as
@@ -22,6 +20,7 @@ and odr.CREATED_TIME <= DATE('2019-07-15')
 and odr.advance_flag = 1
 and usr.user_type = 2
 
+# 司机归属地
 drop table if exists hjl_prepay_dv2;
 create table hjl_prepay_dv2 as
 select customer_nm, created_time, ID_card_no, USER_TYPE, 
@@ -64,13 +63,33 @@ else '未知'
 end as loc
 from hjl_prepay_dv1;
 
-drop table if exists hjl_prepay_dv3;
-create table hjl_prepay_dv3
-select loc, count(loc) as freq, count(loc)/64279*100 as percentage
-from hjl_prepay_dv2
-GROUP BY loc
+# 司机归属地显示省市区编号
+drop table if exists hjl_prepay_dv1_1;
+create table hjl_prepay_dv1_1 as 
+select customer_nm, created_time, ID_card_no, left(ID_card_no,2) as pro, substring(ID_CARD_NO,3,2) as city,
+left(ID_CARD_NO,6) as tot_district
+from hjl_prepay_dv1
 
+# 司机归属地显示省市区编号以及名称
+drop table if exists hjl_prepay_dv1_2;
+create table hjl_prepay_dv1_2 as 
+select drv.customer_nm, drv.created_time, drv.ID_card_no, drv.pro, drv.city,
+drv.tot_district, idcard.prov_name, idcard.city_name, idcard.Total_name
+from hjl_prepay_dv1_1 as drv
+inner join dim_area_number as idcard
+on drv.pro = idcard.prov_number
+and drv.city = idcard.city_number
+and drv.tot_district = idcard.total_number
 
+select count(*) from hjl_prepay_dv1_2
+
+# 司机归属地对应司机数
+drop table if exists hjl_prepay_dv1_3_drvcount_district;
+create table hjl_prepay_dv1_3_drvcount_district as 
+select total_name ,count(distinct id_card_no) as count_no, count(distinct id_card_no)/33546*100 as percentage
+from hjl_prepay_dv1_2
+group by total_name
+order by count_no desc
 
 #收货人
 drop table if exists hjl_prepay_cns1;
@@ -113,14 +132,14 @@ from hjl_prepay_dv2;
 
 select count(*) from hjl_prepay_dv2_1
 
-drop table if exists hjl_prepay_dv2_2;
-create table hjl_prepay_dv2_2
+drop table if exists hjl_prepay_dv2_2_genderfreq;
+create table hjl_prepay_dv2_2_genderfreq
 select sex,count(sex) as sex_freq, count(sex)/64279*100 as sex_percentage
 from hjl_prepay_dv2_1
 group by sex
 
-drop table if exists hjl_prepay_dv2_3;
-create table hjl_prepay_dv2_3
+drop table if exists hjl_prepay_dv2_3_agefreq;
+create table hjl_prepay_dv2_3_agefreq
 select age,count(age) as age_freq, count(age)/64279*100 as age_percentage
 from hjl_prepay_dv2_1
 group by age
@@ -156,10 +175,10 @@ select created_time, count(order_ID)
 from hjl_prepay_oil
 GROUP BY SUBSTRING(created_time,1,7)
 
-
 select count(distinct consignor_user_name) from hjl_prepay_oil_csn
 select count(distinct driver_mobile) from hjl_prepay_oil_dv
 
+#########
 drop table if exists hjl_prepay_oil_dv_1;
 create table hjl_prepay_oil_dv_1 as 
 select consignor_user_name, count(order_ID) as order_no
@@ -172,4 +191,16 @@ select consignor_company, count(order_ID) as order_no
 from hjl_prepay_oil
 GROUP BY consignor_company
 
-select despatch_pro
+# 使用油品作为预付的货主
+select consignor_company, COUNT(order_ID) as order_no from hjl_prepay_oil
+where OIL_CARD_money >0
+group by consignor_company
+
+select consignor_company, COUNT(order_ID) as order_no, left(created_time,7) as created_time2 from hjl_prepay_oil
+where OIL_CARD_money >0
+group by created_time2
+
+select driver_user_name, driver_mobile, consignor_company
+from hjl_prepay_oil
+order by driver_mobile
+
