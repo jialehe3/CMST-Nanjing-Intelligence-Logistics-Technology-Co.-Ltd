@@ -198,6 +198,7 @@ AND odr.SPECIFY_FLAG = 0
 and odr.CREATED_TIME >= DATE('2018-06-01')
 and odr.CREATED_TIME <= DATE('2019-07-24')
 
+# 未收到坏账
 select COUNT(DISTINCT odr.order_ID), sum(adv.ADVANCE_MONEY) as adv_money
 from (ods_oms_tf_b_order as odr
 inner join ods_oms_tf_b_transport as tsp
@@ -298,13 +299,8 @@ where odr.order_ID in(
 '911906131048235899',
 '911906151607306725',
 '911906231438206152')
-and tsp.end_time > odr.RECEIVE_DATE
+AND tsp.end_time > odr.RECEIVE_DATE
 and odr.CREATEd_TIME >= DATE('2018-06-01')
 and odr.CREATEd_TIME <= DATE('2019-07-24')
-and DATEDIFF(tsp.end_time,odr.receive_date)>=15
-and DATEDIFF(tsp.end_time,odr.receive_date)<20
-and odr.advance_flag = 1
 AND odr.SPECIFY_FLAG = 0
-
-
-
+and odr.advance_flag = 1
