@@ -1,0 +1,310 @@
+select count(distinct yichang.order_ID) as exception_no, sum(adv.ADVANCE_MONEY) as exception_money
+FROM (ods_oms_tf_b_order_exception_monitor as yichang
+inner join ods_oms_tf_b_order as odr
+on yichang.order_id = odr.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where yichang.TRACE_EXCEPTION = 1
+and odr.advance_flag = 1
+AND odr.SPECIFY_FLAG = 0
+and odr.CREATED_TIME >= DATE('2018-06-01')
+and odr.CREATED_TIME <= DATE('2019-07-24')
+
+#select abstract, sum_account
+#from ods_ams_tf_b_finance_ord
+#where sum_account <= 0
+#and operate_type = 12
+#and CREATE_TIME >= DATE('2018-06-01')
+#and CREATE_TIME <= DATE('2019-07-24')
+
+#司机预计确认收货时间内未确定收货
+select COUNT(DISTINCT odr.order_ID), sum(adv.ADVANCE_MONEY) as adv_money
+from (ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_transport as tsp
+ON odr.order_id = tsp.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where tsp.end_time > odr.RECEIVE_DATE
+and odr.CREATEd_TIME >= DATE('2018-06-01')
+and odr.CREATEd_TIME <= DATE('2019-07-24')
+AND odr.SPECIFY_FLAG = 0
+and odr.advance_flag = 1
+
+
+
+#司机预计确认收货时间内未确定收货 10天
+select COUNT(DISTINCT odr.order_ID), sum(adv.ADVANCE_MONEY) as adv_money
+from (ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_transport as tsp
+ON odr.order_id = tsp.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where tsp.end_time > odr.RECEIVE_DATE
+and odr.CREATEd_TIME >= DATE('2018-06-01')
+and odr.CREATEd_TIME <= DATE('2019-07-24')
+and DATEDIFF(tsp.end_time,odr.receive_date)>=10
+and DATEDIFF(tsp.end_time,odr.receive_date)<15
+AND odr.SPECIFY_FLAG = 0
+and odr.advance_flag = 1
+
+#司机预计确认收货时间内未确定收货 15天
+select COUNT(DISTINCT odr.order_ID), sum(adv.ADVANCE_MONEY) as adv_money
+from (ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_transport as tsp
+ON odr.order_id = tsp.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where tsp.end_time > odr.RECEIVE_DATE
+and odr.CREATEd_TIME >= DATE('2018-06-01')
+and odr.CREATEd_TIME <= DATE('2019-07-24')
+and DATEDIFF(tsp.end_time,odr.receive_date)>=15
+and DATEDIFF(tsp.end_time,odr.receive_date)<20
+AND odr.SPECIFY_FLAG = 0
+and odr.advance_flag = 1
+
+#司机预计确认收货时间内未确定收货 20
+select COUNT(DISTINCT odr.order_ID), sum(adv.ADVANCE_MONEY) as adv_money
+from (ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_transport as tsp
+ON odr.order_id = tsp.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where tsp.end_time > odr.RECEIVE_DATE
+and odr.CREATEd_TIME >= DATE('2018-06-01')
+and odr.CREATEd_TIME <= DATE('2019-07-24')
+and DATEDIFF(tsp.end_time,odr.receive_date)>=20
+and DATEDIFF(tsp.end_time,odr.receive_date)<30
+AND odr.SPECIFY_FLAG = 0
+and odr.advance_flag = 1
+
+#司机预计确认收货时间内未确定收货 30
+select COUNT(DISTINCT odr.order_ID), sum(adv.ADVANCE_MONEY) as adv_money
+from (ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_transport as tsp
+ON odr.order_id = tsp.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where tsp.end_time > odr.RECEIVE_DATE
+and odr.CREATEd_TIME >= DATE('2018-06-01')
+and odr.CREATEd_TIME <= DATE('2019-07-24')
+and DATEDIFF(tsp.end_time,odr.receive_date)>=30
+AND odr.SPECIFY_FLAG = 0
+and odr.advance_flag = 1
+
+#坏账
+select count(distinct yichang.order_ID) as exception_no, sum(adv.ADVANCE_MONEY) as exception_money
+FROM (ods_oms_tf_b_order_exception_monitor as yichang
+inner join ods_oms_tf_b_order as odr
+on yichang.order_id = odr.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where odr.order_ID in(
+'101810201214544103',
+'911810101006293447',
+'101808311106588695',
+'911812021505026923',
+'911812292141082000', 
+'911903281619243687',
+'911904301538198118',
+'911904302236365216',
+'911905010539231160',
+'911904242056459192',
+'911904271720331710',
+'911904280002244460',
+'911904281224042574',
+'911905060129337484',
+'911905051746587473',
+'911905051103357762',
+'911905170057535547',
+'911905161605367169',
+'911905281731424942',
+'911904281853531854',
+'911905221639427901',
+'911905211031494938',
+'911905141314162550',
+'911904301456272808',
+'911905211047242655',
+'911905012007186459',
+'911905201317477298',
+'911905250853484944',
+'911906091250089551',
+'101904301539464579',
+'911906091603503199',
+'911905081404259061',
+'911905300353177899',
+'911905222119259434',
+'911905281731424942',
+'911906092337481838',
+'911905301628545710',
+'911906050902104105',
+'911903251906396600',
+'911903290940457108',
+'101905091126008354',
+'911905210157031881',
+'911906011837338942',
+'911906031335198004',
+'911906031535456351',
+'911906041617082680',
+'911906041617114069',
+'911906041619471523',
+'911906061739316525',
+'911906061745029995',
+'911906071004399883',
+'911906071205426219',
+'911906071349201418',
+'911906071351191205',
+'911906071657152781',
+'911906071715262685',
+'911906180109263150',
+'101906211125212037',
+'911906260845591259',
+'101906201657479850',
+'911906210004246985',
+'911906281404158905',
+'911906281427222342',
+'911906281435489273',
+'911906291051523804',
+'101906291454088650',
+'101906201133454931',
+'911906131504089861',
+'911906241625014814',
+'101906292306308913',
+'911906271402108504',
+'911906241402447502',
+'911906251438384385',
+'911906261419406905',
+'911906301120088194',
+'911906290503061572',
+'911906280523143338',
+'911906300443144601',
+'911906181020436872',
+'911906181207217647',
+'911906122352434909',
+'101906261001024711',
+'911906180108476713',
+'911906111404476447',
+'911906111936377670',
+'911906130823455220',
+'911906130827533547',
+'911906130925579329',
+'911906131000489062',
+'911906131005461308',
+'911906131048235899',
+'911906151607306725',
+'911906231438206152')
+and yichang.TRACE_EXCEPTION = 1
+and odr.advance_flag = 1
+AND odr.SPECIFY_FLAG = 0
+and odr.CREATED_TIME >= DATE('2018-06-01')
+and odr.CREATED_TIME <= DATE('2019-07-24')
+
+select COUNT(DISTINCT odr.order_ID), sum(adv.ADVANCE_MONEY) as adv_money
+from (ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_transport as tsp
+ON odr.order_id = tsp.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where odr.order_ID in(
+'101810201214544103',
+'911810101006293447',
+'101808311106588695',
+'911812021505026923',
+'911812292141082000', 
+'911903281619243687',
+'911904301538198118',
+'911904302236365216',
+'911905010539231160',
+'911904242056459192',
+'911904271720331710',
+'911904280002244460',
+'911904281224042574',
+'911905060129337484',
+'911905051746587473',
+'911905051103357762',
+'911905170057535547',
+'911905161605367169',
+'911905281731424942',
+'911904281853531854',
+'911905221639427901',
+'911905211031494938',
+'911905141314162550',
+'911904301456272808',
+'911905211047242655',
+'911905012007186459',
+'911905201317477298',
+'911905250853484944',
+'911906091250089551',
+'101904301539464579',
+'911906091603503199',
+'911905081404259061',
+'911905300353177899',
+'911905222119259434',
+'911905281731424942',
+'911906092337481838',
+'911905301628545710',
+'911906050902104105',
+'911903251906396600',
+'911903290940457108',
+'101905091126008354',
+'911905210157031881',
+'911906011837338942',
+'911906031335198004',
+'911906031535456351',
+'911906041617082680',
+'911906041617114069',
+'911906041619471523',
+'911906061739316525',
+'911906061745029995',
+'911906071004399883',
+'911906071205426219',
+'911906071349201418',
+'911906071351191205',
+'911906071657152781',
+'911906071715262685',
+'911906180109263150',
+'101906211125212037',
+'911906260845591259',
+'101906201657479850',
+'911906210004246985',
+'911906281404158905',
+'911906281427222342',
+'911906281435489273',
+'911906291051523804',
+'101906291454088650',
+'101906201133454931',
+'911906131504089861',
+'911906241625014814',
+'101906292306308913',
+'911906271402108504',
+'911906241402447502',
+'911906251438384385',
+'911906261419406905',
+'911906301120088194',
+'911906290503061572',
+'911906280523143338',
+'911906300443144601',
+'911906181020436872',
+'911906181207217647',
+'911906122352434909',
+'101906261001024711',
+'911906180108476713',
+'911906111404476447',
+'911906111936377670',
+'911906130823455220',
+'911906130827533547',
+'911906130925579329',
+'911906131000489062',
+'911906131005461308',
+'911906131048235899',
+'911906151607306725',
+'911906231438206152')
+and tsp.end_time > odr.RECEIVE_DATE
+and odr.CREATEd_TIME >= DATE('2018-06-01')
+and odr.CREATEd_TIME <= DATE('2019-07-24')
+and DATEDIFF(tsp.end_time,odr.receive_date)>=15
+and DATEDIFF(tsp.end_time,odr.receive_date)<20
+and odr.advance_flag = 1
+AND odr.SPECIFY_FLAG = 0
+
+
+
