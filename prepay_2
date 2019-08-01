@@ -1,3 +1,4 @@
+#轨迹异常
 select count(distinct yichang.order_ID) as exception_no, sum(adv.ADVANCE_MONEY) as exception_money
 FROM (ods_oms_tf_b_order_exception_monitor as yichang
 inner join ods_oms_tf_b_order as odr
@@ -9,6 +10,22 @@ and odr.advance_flag = 1
 AND odr.SPECIFY_FLAG = 0
 and odr.CREATED_TIME >= DATE('2018-06-01')
 and odr.CREATED_TIME <= DATE('2019-07-24')
+
+#轨迹异常运单详细信息
+drop table if exists hjl_prepay_abnormal;
+create table hjl_prepay_abnormal as
+select yichang.order_ID, adv.ADVANCE_MONEy
+FROM (ods_oms_tf_b_order_exception_monitor as yichang
+inner join ods_oms_tf_b_order as odr
+on yichang.order_id = odr.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID
+where yichang.TRACE_EXCEPTION = 1
+and odr.advance_flag = 1
+AND odr.SPECIFY_FLAG = 0
+and odr.CREATED_TIME >= DATE('2018-06-01')
+and odr.CREATED_TIME <= DATE('2019-07-24')
+
 
 #select abstract, sum_account
 #from ods_ams_tf_b_finance_ord
@@ -24,7 +41,7 @@ inner join ods_oms_tf_b_transport as tsp
 ON odr.order_id = tsp.order_ID)
 inner join ods_oms_tf_b_order_advance as adv
 on odr.order_ID = adv.order_ID
-where tsp.end_time > odr.RECEIVE_DATE
+where tsp.end_time > odr.RECEIVE_DATE # receive date 为货主填写预期时间
 and odr.CREATEd_TIME >= DATE('2018-06-01')
 and odr.CREATEd_TIME <= DATE('2019-07-24')
 AND odr.SPECIFY_FLAG = 0
