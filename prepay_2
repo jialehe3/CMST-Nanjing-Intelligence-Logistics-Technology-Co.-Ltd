@@ -321,3 +321,4 @@ and odr.CREATEd_TIME >= DATE('2018-06-01')
 and odr.CREATEd_TIME <= DATE('2019-07-24')
 AND odr.SPECIFY_FLAG = 0
 and odr.advance_flag = 1
+
