@@ -84,7 +84,7 @@ and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
 and odr.CREATED_TIME <= DATE('2019-07-24')
 and datediff(brec.created_time, 
 
-
+# 违约订单任务
 # 违约订单
 drop table if EXISTS hjl_prepay1;
 create table hjl_prepay1 AS
@@ -265,7 +265,13 @@ select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 0
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 30
+
+select pp8.order_ID,adv.ADVANCE_MONEY, pp8.breach_start_time, pp8.return_time
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 30
 
 # 查询相关坏账
 select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
@@ -467,7 +473,7 @@ where pp8.order_ID in(
 '911906151607306725',
 '911906231438206152')
 
-select * from ods_ams_tf_b_finance_ord
+select order_ID, min(create_time),sum_account from ods_ams_tf_b_finance_ord
 where order_ID in(
 "101810201214544103",
 "911810101006293447",
@@ -493,3 +499,36 @@ where order_ID in(
 "911905211031494938",
 "911905141314162550",
 "911904301456272808")
+
+select * from hjl_prepay5
+where order_ID in("101808311106588695",
+"101809251341251924",
+"101809301615536984",
+"101810110809497443",
+"101810201214544103",
+"101903251014028519",
+"101903271221193626",
+"911809211300503426",
+"911809222025394556",
+"911810101006293447",
+"911812021505026923",
+"911902151259047891",
+"911902161046487061",
+"911903030431547274",
+"911903281619243687",
+"911904242056459192",
+"911904271720331710",
+"911904280002244460",
+"911904281224042574",
+"911904281853531854",
+"911904301538198118",
+"911904302236365216",
+"911905010539231160",
+"911905051143556206",
+"911905142055249881",
+"911905170057535547",
+"911905182009476596",
+"911905211031494938",
+"911905221639427901",
+"911905281806351609")
+group by order_ID
