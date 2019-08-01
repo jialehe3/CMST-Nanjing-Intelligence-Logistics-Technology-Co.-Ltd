@@ -1,0 +1,496 @@
+#逾期货主结算
+select odr.order_ID, delist.delist_time, csns.CONSIGNOR_SETTLE_TIME
+from (((ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_order_delist as delist
+on odr.order_ID = delist.ORDER_ID)
+left join ods_oms_tf_b_consignor_state as csns
+on odr.order_ID = csns.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID)
+LEFT JOIN ods_oms_tf_b_breach_contract as bre
+on odr.order_ID = bre.order_ID
+where odr.ADVANCE_FLAG = 1
+and odr.DEAL_FLAG = 1 #已成交
+AND odr.SPECIFY_FLAG = 0 #非指定摘单
+and delist.DELIST_STATE = 1 #成功摘单
+and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
+and odr.CREATED_TIME <= DATE('2019-07-24')
+and datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 10
+#date(csns.CONSIGNOR_SETTLE_TIME) >(date_add(delist.DELIST_TIME, interval 10 day)) #十天内方法2
+#or csns.ORDER_ID is NULL)
+
+#逾期货主结算单量和金额
+select count(distinct odr.order_ID)as order_no, sum(adv.ADVANCE_MONEY) as adv_money
+from (((ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_order_delist as delist
+on odr.order_ID = delist.ORDER_ID)
+left join ods_oms_tf_b_consignor_state as csns
+on odr.order_ID = csns.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID)
+LEFT JOIN ods_oms_tf_b_breach_contract as bre
+on odr.order_ID = bre.order_ID
+where odr.ADVANCE_FLAG = 1
+and odr.DEAL_FLAG = 1 #已成交
+AND odr.SPECIFY_FLAG = 0 #非指定摘单
+and delist.DELIST_STATE = 1 #成功摘单
+and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
+and odr.CREATED_TIME <= DATE('2019-07-24')
+and datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 10
+
+
+#逾期平台终止
+drop table if exists hjl_prepay_overdue_temp1;
+create table hjl_prepay_overdue_temp1 as 
+select odr.order_ID, delist.delist_time, csns.CONSIGNOR_SETTLE_TIME, bre.CREATED_TIME
+from (((ods_oms_tf_b_order as odr
+inner join ods_oms_tf_b_order_delist as delist
+on odr.order_ID = delist.ORDER_ID)
+left join ods_oms_tf_b_consignor_state as csns
+on odr.order_ID = csns.order_ID)
+inner join ods_oms_tf_b_order_advance as adv
+on odr.order_ID = adv.order_ID)
+LEFT JOIN ods_oms_tf_b_breach_contract as bre
+on odr.order_ID = bre.order_ID
+where odr.ADVANCE_FLAG = 1
+and odr.DEAL_FLAG = 1 #已成交
+AND odr.SPECIFY_FLAG = 0 #非指定摘单
+# and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
+and delist.DELIST_STATE = 1 #成功摘单
+and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
+and odr.CREATED_TIME <= DATE('2019-07-24')
+and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 10
+#date(csns.CONSIGNOR_SETTLE_TIME) >(date_add(delist.DELIST_TIME, interval 10 day)) #十天内方法2
+or csns.ORDER_ID is NULL)
+and datediff(bre.CREATED_TIME,delist.DELIST_TIME)>10
+
+#平台终止逾期
+select t1.order_ID, t1.delist_time, t1.CONSIGNOR_SETTLE_TIME, t1.CREATED_TIME, adv.ADVANCE_MONEY
+from hjl_prepay_overdue_temp1 as t1
+inner join ods_oms_tf_b_order_advance as adv
+on t1.order_ID = adv.ORDER_ID
+where t1.consignor_settle_time is null
+
+
+select brec.stop_flag, brec.created_time
+from ods_oms_tf_b_breach_contract as brec
+inner join ods_oms_tf_b_order as odr
+where odr.ADVANCE_FLAG = 1
+and odr.DEAL_FLAG = 1 #已成交
+AND odr.SPECIFY_FLAG = 0 #非指定摘单
+and brec.stop_flag = 1 # 违约终止运单
+# and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
+and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
+and odr.CREATED_TIME <= DATE('2019-07-24')
+and datediff(brec.created_time, 
+
+
+# 违约订单
+drop table if EXISTS hjl_prepay1;
+create table hjl_prepay1 AS
+select prepay.order_id
+      ,prepay.created_time
+      ,pp2. advance_money
+      ,pp2.SERVICE_MONEY from
+(select distinct order_id,created_time 
+from ods_oms_tf_b_order 
+where date(created_time) >= '20180601' 
+and date(CREATED_TIME) <= '20190724' 
+and SPECIFY_FLAG = 0 #非指定
+and ADVANCE_FLAG = 1 #预付
+and DELETE_FLAG = 0 ) as prepay #未删除
+left join
+(select distinct order_id,ADVANCE_MONEY,SERVICE_MONEY 
+from ods_oms_tf_b_order_advance 
+where date(created_time) > '20180101' 
+and DELETE_FLAG = 0) pp2 #未删除
+using(order_id);
+
+#预付中违约订单
+drop table if EXISTS hjl_prepay2;
+create table hjl_prepay2 AS 
+select pp1.order_id
+      ,pp2.created_time as breach_start_time from 
+(select order_id,created_time 
+from hjl_prepay1) as pp1
+INNER JOIN
+(select distinct order_id,created_time 
+from ods_oms_tf_b_breach_contract 
+where date(created_time) > '20180101' 
+and delete_flag = 0) as pp2 
+using(order_id);
+
+#违约订单还款时间
+drop table if EXISTS hjl_prepay3;
+create table hjl_prepay3 as 
+select pp.user_id,pp.order_id,pp.create_time 
+from 
+(select distinct user_id,order_id,create_time 
+from ods_ams_tf_b_finance_ord 
+where order_id 
+in (select order_id 
+from hjl_prepay2) 
+and user_type = 1) pp; #只看司机
+
+# 最后账户变动时间
+drop table if EXISTS hjl_prepay4;
+create table hjl_prepay4 as 
+select pp3.user_id
+      ,pp4.order_id
+      ,pp4.create_time from 
+(select distinct user_id,order_id 
+from hjl_prepay3) pp3
+INNER JOIN
+(select order_id,max(create_time) as create_time 
+from hjl_prepay3 group by order_id) pp4
+on pp3.order_id = pp4.order_id;
+
+drop table if EXISTS hjl_prepay5;
+create table hjl_prepay5 as 
+select t1.order_id,t2.create_time, t2.sum_account from
+(select * from hjl_prepay4) t1
+left JOIN
+(select user_id,create_time,sum_account 
+from ods_ams_tf_b_finance_ord 
+where date(create_time) > '20180101' 
+and sum_account >= 0 # 账户为正
+and user_type = 1) t2 #只看司机
+on t1.user_id = t2.user_id # 违约账户
+and t1.create_time <= t2.create_time; 
+
+drop table if EXISTS hjl_prepay6;
+create table hjl_prepay6 as 
+select order_id, min(create_time) as return_time 
+from  hjl_prepay5 group by order_id;
+
+#预付违约开始和还款时间
+drop table if EXISTS hjl_prepay07;
+create table hjl_prepay07 as 
+select t1.order_id
+      ,t2.breach_start_time
+      ,t1.return_time FROM
+(select order_id,return_time 
+from hjl_prepay6) t1
+LEFT JOIN
+(select order_id,breach_start_time 
+from hjl_prepay2) t2 
+on t1.order_id = t2.order_id;
+
+drop table if exists hjl_prepay08;
+create table hjl_prepay08 as
+select order_ID, breach_start_time,
+case when return_time is NULL
+then date("9999-01-01")
+else return_time
+end as return_time
+from hjl_prepay07
+
+!!!!! set @starttime = '2018-06-01' !!!!!
+
+
+#逾期单量和金额查询
+select pp8.order_ID ,adv.ADVANCE_MONEY, pp8.breach_start_time, pp8.return_time
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 7
+and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 37
+or (DATEDIFF('20190531',pp8.breach_start_time) <= 37 and
+ DATEDIFF('20190531',pp8.breach_start_time) >= 7))
+and pp8.return_time >= '20190501'
+and pp8.breach_start_time <= '20190531'
+
+#逾期单量和金额查询（无终止日期）
+select pp8.order_ID ,adv.ADVANCE_MONEY, pp8.breach_start_time, pp8.return_time
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 97
+and DATEDIFF('20190131',pp8.breach_start_time) >= 97
+and pp8.return_time >= '20190101'
+and pp8.breach_start_time <= '20190131'
+
+#查询筛选后是否存在此运单
+select * from hjl_prepay08
+where order_ID = '911905010539231160'
+
+#逾期均单和金额1-30天，7天缓期
+select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 7
+and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 37
+or (DATEDIFF('20190228',pp8.breach_start_time) <= 37 and
+ DATEDIFF('20190228',pp8.breach_start_time) >= 7))
+and pp8.return_time >= '20190201'
+and pp8.breach_start_time <= '20190228'
+
+#30-60天 +7
+select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 37
+and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 67
+or (DATEDIFF('20190228',pp8.breach_start_time) <= 67 and
+ DATEDIFF('20190228',pp8.breach_start_time) >= 37))
+and pp8.return_time >= '20190201'
+and pp8.breach_start_time <= '20190228'
+
+# 60-90天 +7
+select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 67
+and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 97
+or (DATEDIFF('20190228',pp8.breach_start_time) <= 97 and
+ DATEDIFF('20190228',pp8.breach_start_time) >= 67))
+and pp8.return_time >= '20190201'
+and pp8.breach_start_time <= '20190228'
+
+#90天以上 +7
+select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 97
+and DATEDIFF('20190228',pp8.breach_start_time) >= 97
+and pp8.return_time >= '20190201'
+and pp8.breach_start_time <= '20190228'
+
+#智运宝内金额为0或低于0，15天内
+select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) < 15
+
+
+# 查询相关坏账
+select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where pp8.order_ID in(
+'101810201214544103',
+'911810101006293447',
+'101808311106588695',
+'911812021505026923',
+'911812292141082000', 
+'911903281619243687',
+'911904301538198118',
+'911904302236365216',
+'911905010539231160',
+'911904242056459192',
+'911904271720331710',
+'911904280002244460',
+'911904281224042574',
+'911905060129337484',
+'911905051746587473',
+'911905051103357762',
+'911905170057535547',
+'911905161605367169',
+'911905281731424942',
+'911904281853531854',
+'911905221639427901',
+'911905211031494938',
+'911905141314162550',
+'911904301456272808',
+'911905211047242655',
+'911905012007186459',
+'911905201317477298',
+'911905250853484944',
+'911906091250089551',
+'101904301539464579',
+'911906091603503199',
+'911905081404259061',
+'911905300353177899',
+'911905222119259434',
+'911905281731424942',
+'911906092337481838',
+'911905301628545710',
+'911906050902104105',
+'911903251906396600',
+'911903290940457108',
+'101905091126008354',
+'911905210157031881',
+'911906011837338942',
+'911906031335198004',
+'911906031535456351',
+'911906041617082680',
+'911906041617114069',
+'911906041619471523',
+'911906061739316525',
+'911906061745029995',
+'911906071004399883',
+'911906071205426219',
+'911906071349201418',
+'911906071351191205',
+'911906071657152781',
+'911906071715262685',
+'911906180109263150',
+'101906211125212037',
+'911906260845591259',
+'101906201657479850',
+'911906210004246985',
+'911906281404158905',
+'911906281427222342',
+'911906281435489273',
+'911906291051523804',
+'101906291454088650',
+'101906201133454931',
+'911906131504089861',
+'911906241625014814',
+'101906292306308913',
+'911906271402108504',
+'911906241402447502',
+'911906251438384385',
+'911906261419406905',
+'911906301120088194',
+'911906290503061572',
+'911906280523143338',
+'911906300443144601',
+'911906181020436872',
+'911906181207217647',
+'911906122352434909',
+'101906261001024711',
+'911906180108476713',
+'911906111404476447',
+'911906111936377670',
+'911906130823455220',
+'911906130827533547',
+'911906130925579329',
+'911906131000489062',
+'911906131005461308',
+'911906131048235899',
+'911906151607306725',
+'911906231438206152')
+
+count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+select pp8.order_ID, pp8.breach_start_time, pp8.return_time
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where pp8.order_ID in(
+'101810201214544103',
+'911810101006293447',
+'101808311106588695',
+'911812021505026923',
+'911812292141082000', 
+'911903281619243687',
+'911904301538198118',
+'911904302236365216',
+'911905010539231160',
+'911904242056459192',
+'911904271720331710',
+'911904280002244460',
+'911904281224042574',
+'911905060129337484',
+'911905051746587473',
+'911905051103357762',
+'911905170057535547',
+'911905161605367169',
+'911905281731424942',
+'911904281853531854',
+'911905221639427901',
+'911905211031494938',
+'911905141314162550',
+'911904301456272808',
+'911905211047242655',
+'911905012007186459',
+'911905201317477298',
+'911905250853484944',
+'911906091250089551',
+'101904301539464579',
+'911906091603503199',
+'911905081404259061',
+'911905300353177899',
+'911905222119259434',
+'911905281731424942',
+'911906092337481838',
+'911905301628545710',
+'911906050902104105',
+'911903251906396600',
+'911903290940457108',
+'101905091126008354',
+'911905210157031881',
+'911906011837338942',
+'911906031335198004',
+'911906031535456351',
+'911906041617082680',
+'911906041617114069',
+'911906041619471523',
+'911906061739316525',
+'911906061745029995',
+'911906071004399883',
+'911906071205426219',
+'911906071349201418',
+'911906071351191205',
+'911906071657152781',
+'911906071715262685',
+'911906180109263150',
+'101906211125212037',
+'911906260845591259',
+'101906201657479850',
+'911906210004246985',
+'911906281404158905',
+'911906281427222342',
+'911906281435489273',
+'911906291051523804',
+'101906291454088650',
+'101906201133454931',
+'911906131504089861',
+'911906241625014814',
+'101906292306308913',
+'911906271402108504',
+'911906241402447502',
+'911906251438384385',
+'911906261419406905',
+'911906301120088194',
+'911906290503061572',
+'911906280523143338',
+'911906300443144601',
+'911906181020436872',
+'911906181207217647',
+'911906122352434909',
+'101906261001024711',
+'911906180108476713',
+'911906111404476447',
+'911906111936377670',
+'911906130823455220',
+'911906130827533547',
+'911906130925579329',
+'911906131000489062',
+'911906131005461308',
+'911906131048235899',
+'911906151607306725',
+'911906231438206152')
+
+select * from hjl_prepay08
+where order_ID in(
+"101810201214544103",
+"911810101006293447",
+"101808311106588695",
+"911812021505026923",
+"911812292141082000", 
+"911903281619243687",
+"911904301538198118",
+"911904302236365216",
+"911905010539231160",
+"911904242056459192",
+"911904271720331710",
+"911904280002244460",
+"911904281224042574",
+"911905060129337484",
+"911905051746587473",
+"911905051103357762",
+"911905170057535547",
+"911905161605367169",
+"911905281731424942",
+"911904281853531854",
+"911905221639427901",
+"911905211031494938",
+"911905141314162550",
+"911904301456272808")
