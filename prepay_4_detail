@@ -265,8 +265,7 @@ select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) < 15
-
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 0
 
 # 查询相关坏账
 select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
@@ -468,7 +467,7 @@ where pp8.order_ID in(
 '911906151607306725',
 '911906231438206152')
 
-select * from hjl_prepay08
+select * from ods_ams_tf_b_finance_ord
 where order_ID in(
 "101810201214544103",
 "911810101006293447",
