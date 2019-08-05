@@ -55,6 +55,7 @@ select pp3.user_id
 (select distinct user_id,order_id 
 from hjl_prepay3) pp3
 INNER JOIN
+#最近一次违约时间（违约后不处理无法进行下一次摘单）
 (select order_id,max(create_time) as create_time 
 from hjl_prepay3 group by order_id) pp4
 on pp3.order_id = pp4.order_id;
@@ -101,8 +102,8 @@ from hjl_prepay07
 
 !!!!! set @starttime = '2018-06-01' !!!!!
 
-set @kaishi = '20190701';
-set @jieshu = '20190731'
+set @kaishi = '20181201';
+set @jieshu = '20181231'
 
 #逾期单量和金额查询
 select pp8.order_ID ,adv.ADVANCE_MONEY, pp8.breach_start_time, pp8.return_time
@@ -166,30 +167,60 @@ or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 97 and
 and pp8.return_time >= @kaishi
 and pp8.breach_start_time <= @jieshu
 
-#90天以上 +7
+set @kaishi = '20190301';
+set @jieshu = '20190331'
+
+#90-120 +7
 select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
 where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 97
-and DATEDIFF(@jieshu,pp8.breach_start_time) >= 97
+and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 127
+or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 127 and
+ DATEDIFF(@jieshu,pp8.breach_start_time) >= 97))
 and pp8.return_time >= @kaishi
 and pp8.breach_start_time <= @jieshu
+
+# 120-150 +7
+select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 127
+and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 157
+or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 157 and
+ DATEDIFF(@jieshu,pp8.breach_start_time) >= 127))
+and pp8.return_time >= @kaishi
+and pp8.breach_start_time <= @jieshu
+
+#>157
+select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 157
+and DATEDIFF(@jieshu,pp8.breach_start_time) >= 157
+and pp8.return_time >= @kaishi
+and pp8.breach_start_time <= @jieshu
+
+
 
 #智运宝内金额为0或低于0，15, ...天内
 select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 90
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 30
 # 0或低于0， ...天内细节
 select pp8.order_ID,adv.ADVANCE_MONEY, pp8.breach_start_time, pp8.return_time
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 15
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 30
 
 # 查询相关坏账
+
 select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
@@ -229,18 +260,17 @@ and order_ID in(
 '911906251419529476',
 '911906201536182593')
 
-#有无结算细分
-count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
-select pp8.order_ID, pp8.breach_start_time, pp8.return_time
+select pp8.order_ID
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where pp8.order_ID in(
+where DATEDIFF(pp8.return_time,pp8.breach_start_time) >= 30
+and order_ID in(
 '101810201214544103',
 '911810101006293447',
 '101808311106588695',
 '911812021505026923',
-'911812292141082000', 
+'911812292141082089',
 '911903281619243687',
 '911904301538198118',
 '911904302236365216',
@@ -260,76 +290,16 @@ where pp8.order_ID in(
 '911905211031494938',
 '911905141314162550',
 '911904301456272808',
-'911905211047242655',
-'911905012007186459',
-'911905201317477298',
-'911905250853484944',
-'911906091250089551',
-'101904301539464579',
-'911906091603503199',
-'911905081404259061',
-'911905300353177899',
-'911905222119259434',
-'911905281731424942',
-'911906092337481838',
-'911905301628545710',
-'911906050902104105',
-'911903251906396600',
-'911903290940457108',
-'101905091126008354',
-'911905210157031881',
-'911906011837338942',
-'911906031335198004',
-'911906031535456351',
-'911906041617082680',
-'911906041617114069',
-'911906041619471523',
-'911906061739316525',
-'911906061745029995',
-'911906071004399883',
-'911906071205426219',
-'911906071349201418',
-'911906071351191205',
-'911906071657152781',
-'911906071715262685',
-'911906180109263150',
-'101906211125212037',
-'911906260845591259',
-'101906201657479850',
-'911906210004246985',
-'911906281404158905',
-'911906281427222342',
-'911906281435489273',
-'911906291051523804',
-'101906291454088650',
-'101906201133454931',
-'911906131504089861',
-'911906241625014814',
-'101906292306308913',
-'911906271402108504',
-'911906241402447502',
-'911906251438384385',
-'911906261419406905',
-'911906301120088194',
-'911906290503061572',
-'911906280523143338',
-'911906300443144601',
-'911906181020436872',
-'911906181207217647',
-'911906122352434909',
-'101906261001024711',
-'911906180108476713',
-'911906111404476447',
-'911906111936377670',
-'911906130823455220',
-'911906130827533547',
-'911906130925579329',
-'911906131000489062',
-'911906131005461308',
-'911906131048235899',
-'911906151607306725',
-'911906231438206152')
+'911906131743376741',
+'911906141017556931',
+'911905231220169847',
+'911905251643181203',
+'911904040628202973',
+'911905251718572021',
+'911906251419529476',
+'911906201536182593')
 
+#有无结算细分
 select order_ID, min(create_time),sum_account from ods_ams_tf_b_finance_ord
 where order_ID in(
 "101810201214544103",
@@ -356,39 +326,6 @@ where order_ID in(
 "911905211031494938",
 "911905141314162550",
 "911904301456272808")
-
-select * from hjl_prepay5
-where order_ID in("101808311106588695",
-"101809251341251924",
-"101809301615536984",
-"101810110809497443",
-"101810201214544103",
-"101903251014028519",
-"101903271221193626",
-"911809211300503426",
-"911809222025394556",
-"911810101006293447",
-"911812021505026923",
-"911902151259047891",
-"911902161046487061",
-"911903030431547274",
-"911903281619243687",
-"911904242056459192",
-"911904271720331710",
-"911904280002244460",
-"911904281224042574",
-"911904281853531854",
-"911904301538198118",
-"911904302236365216",
-"911905010539231160",
-"911905051143556206",
-"911905142055249881",
-"911905170057535547",
-"911905182009476596",
-"911905211031494938",
-"911905221639427901",
-"911905281806351609")
-group by order_ID
 
 select * from ods_tf_b_breach_contract
 where order_ID = "911904040628202973"
