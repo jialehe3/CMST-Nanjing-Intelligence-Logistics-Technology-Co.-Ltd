@@ -21,21 +21,21 @@ AND odr.SPECIFY_FLAG = 0 #非指定摘单
 # and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
 and delist.DELIST_STATE = 1 #成功摘单
 and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
-and odr.CREATED_TIME <= DATE('2019-07-24')
+and odr.CREATED_TIME <= DATE('2019-07-31')
 and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 20
 #date(csns.CONSIGNOR_SETTLE_TIME) >(date_add(delist.DELIST_TIME, interval 10 day)) #十天内方法2
 or csns.ORDER_ID is NULL)
 
 #逾期单量和金额
 select count(distinct odr.order_ID)as order_no, sum(adv.ADVANCE_MONEY) as adv_money
-from (((ods_oms_tf_b_order as odr
-inner join ods_oms_tf_b_order_delist as delist
+from (((ods_oms_order as odr
+inner join ods_tf_b_order_delist as delist
 on odr.order_ID = delist.ORDER_ID)
-left join ods_oms_tf_b_consignor_state as csns
+left join ods_oms_consignor_state as csns
 on odr.order_ID = csns.order_ID)
 inner join ods_oms_tf_b_order_advance as adv
 on odr.order_ID = adv.order_ID)
-LEFT JOIN ods_oms_tf_b_breach_apply as bre
+LEFT JOIN ods_tf_b_breach_apply as bre
 on odr.order_ID = bre.order_ID
 where odr.ADVANCE_FLAG = 1
 and odr.DEAL_FLAG = 1 #已成交
@@ -43,20 +43,20 @@ AND odr.SPECIFY_FLAG = 0 #非指定摘单
 # and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
 and delist.DELIST_STATE = 1 #成功摘单
 and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
-and odr.CREATED_TIME <= DATE('2019-07-24')
+and odr.CREATED_TIME <= DATE('2019-07-31')
 and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 10
 or csns.ORDER_ID is NULL)
 
 #逾期 10-15
 select count(distinct odr.order_ID)as order_no, sum(adv.ADVANCE_MONEY) as adv_money
-from (((ods_oms_tf_b_order as odr
-inner join ods_oms_tf_b_order_delist as delist
+from (((ods_oms_order as odr
+inner join ods_tf_b_order_delist as delist
 on odr.order_ID = delist.ORDER_ID)
-left join ods_oms_tf_b_consignor_state as csns
+left join ods_oms_consignor_state as csns
 on odr.order_ID = csns.order_ID)
 inner join ods_oms_tf_b_order_advance as adv
 on odr.order_ID = adv.order_ID)
-LEFT JOIN ods_oms_tf_b_breach_apply as bre
+LEFT JOIN ods_tf_b_breach_apply as bre
 on odr.order_ID = bre.order_ID
 #where bre.order_ID is null
 where odr.ADVANCE_FLAG = 1
@@ -65,21 +65,21 @@ AND odr.SPECIFY_FLAG = 0 #非指定摘单
 # and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
 and delist.DELIST_STATE = 1 #成功摘单
 and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
-and odr.CREATED_TIME <= DATE('2019-07-24')
+and odr.CREATED_TIME <= DATE('2019-07-31')
 and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 20
 #and datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) <=25
 or csns.ORDER_ID is NULL)
 
 # 15-20
 select count(distinct odr.order_ID)as order_no, sum(adv.ADVANCE_MONEY) as adv_money
-from (((ods_oms_tf_b_order as odr
-inner join ods_oms_tf_b_order_delist as delist
+from (((ods_oms_order as odr
+inner join ods_tf_b_order_delist as delist
 on odr.order_ID = delist.ORDER_ID)
-left join ods_oms_tf_b_consignor_state as csns
+left join ods_oms_consignor_state as csns
 on odr.order_ID = csns.order_ID)
 inner join ods_oms_tf_b_order_advance as adv
 on odr.order_ID = adv.order_ID)
-LEFT JOIN ods_oms_tf_b_breach_apply as bre
+LEFT JOIN ods_tf_b_breach_apply as bre
 on odr.order_ID = bre.order_ID
 #where bre.order_ID is null
 where odr.ADVANCE_FLAG = 1
@@ -88,21 +88,21 @@ AND odr.SPECIFY_FLAG = 0 #非指定摘单
 # and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
 and delist.DELIST_STATE = 1 #成功摘单
 and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
-and odr.CREATED_TIME <= DATE('2019-07-24')
+and odr.CREATED_TIME <= DATE('2019-07-31')
 and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 25
 #and datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) <=30
 or csns.ORDER_ID is NULL)
 
 #20-30
 select count(distinct odr.order_ID)as order_no, sum(adv.ADVANCE_MONEY) as adv_money
-from (((ods_oms_tf_b_order as odr
-inner join ods_oms_tf_b_order_delist as delist
+from (((ods_oms_order as odr
+inner join ods_tf_b_order_delist as delist
 on odr.order_ID = delist.ORDER_ID)
-left join ods_oms_tf_b_consignor_state as csns
+left join ods_oms_consignor_state as csns
 on odr.order_ID = csns.order_ID)
 inner join ods_oms_tf_b_order_advance as adv
 on odr.order_ID = adv.order_ID)
-LEFT JOIN ods_oms_tf_b_breach_apply as bre
+LEFT JOIN ods_tf_b_breach_apply as bre
 on odr.order_ID = bre.order_ID
 #where bre.order_ID is null
 WHERE odr.ADVANCE_FLAG = 1
@@ -111,21 +111,21 @@ AND odr.SPECIFY_FLAG = 0 #非指定摘单
 # and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
 and delist.DELIST_STATE = 1 #成功摘单
 and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
-and odr.CREATED_TIME <= DATE('2019-07-24')
+and odr.CREATED_TIME <= DATE('2019-07-31')
 and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 30
 #and datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) <=40
 or csns.ORDER_ID is NULL)
 
 #>30
 select count(distinct odr.order_ID)as order_no, sum(adv.ADVANCE_MONEY) as adv_money
-from (((ods_oms_tf_b_order as odr
-inner join ods_oms_tf_b_order_delist as delist
+from (((ods_oms_order as odr
+inner join ods_tf_b_order_delist as delist
 on odr.order_ID = delist.ORDER_ID)
-left join ods_oms_tf_b_consignor_state as csns
+left join ods_oms_consignor_state as csns
 on odr.order_ID = csns.order_ID)
 inner join ods_oms_tf_b_order_advance as adv
 on odr.order_ID = adv.order_ID)
-LEFT JOIN ods_oms_tf_b_breach_apply as bre
+LEFT JOIN ods_tf_b_breach_apply as bre
 on odr.order_ID = bre.order_ID
 #where bre.order_ID is null
 where odr.ADVANCE_FLAG = 1
@@ -134,20 +134,20 @@ AND odr.SPECIFY_FLAG = 0 #非指定摘单
 # and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
 and delist.DELIST_STATE = 1 #成功摘单
 and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
-and odr.CREATED_TIME <= DATE('2019-07-24')
+and odr.CREATED_TIME <= DATE('2019-07-31')
 and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 40
 or csns.ORDER_ID is NULL)
 
 # 逾期坏账
 select count(distinct odr.order_ID)as order_no, sum(adv.ADVANCE_MONEY) as adv_money
-from (((ods_oms_tf_b_order as odr
-inner join ods_oms_tf_b_order_delist as delist
+from (((ods_oms_order as odr
+inner join ods_tf_b_order_delist as delist
 on odr.order_ID = delist.ORDER_ID)
-left join ods_oms_tf_b_consignor_state as csns
+left join ods_oms_consignor_state as csns
 on odr.order_ID = csns.order_ID)
 inner join ods_oms_tf_b_order_advance as adv
 on odr.order_ID = adv.order_ID)
-LEFT JOIN ods_oms_tf_b_breach_apply as bre
+LEFT JOIN ods_tf_b_breach_apply as bre
 on odr.order_ID = bre.order_ID
 where odr.ADVANCE_FLAG = 1
 and odr.DEAL_FLAG = 1 #已成交
@@ -155,7 +155,7 @@ AND odr.SPECIFY_FLAG = 0 #非指定摘单
 # and csns.CONSIGNOR_SETTLE_STATE = 0 #未结算
 and delist.DELIST_STATE = 1 #成功摘单
 and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
-and odr.CREATED_TIME <= DATE('2019-07-24')
+and odr.CREATED_TIME <= DATE('2019-07-31')
 and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 10
 or csns.ORDER_ID is NULL)
 and odr.order_ID in(
