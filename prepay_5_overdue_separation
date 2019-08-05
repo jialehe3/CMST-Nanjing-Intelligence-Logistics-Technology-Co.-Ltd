@@ -1,21 +1,21 @@
 drop table if exists hjl_prepay_overdue_1;
 create table hjl_prepay_overdue_1
 select odr.order_ID, adv.ADVANCE_MONEY,delist.delist_time, csns.consignor_settle_time
-from (((ods_oms_tf_b_order as odr
-inner join ods_oms_tf_b_order_delist as delist
+from (((ods_oms_order as odr
+inner join ods_tf_b_order_delist as delist
 on odr.order_ID = delist.ORDER_ID)
-left join ods_oms_tf_b_consignor_state as csns
+left join ods_oms_consignor_state as csns
 on odr.order_ID = csns.order_ID)
 inner join ods_oms_tf_b_order_advance as adv
 on odr.order_ID = adv.order_ID)
-LEFT JOIN ods_oms_tf_b_breach_apply as bre
+LEFT JOIN ods_tf_b_breach_apply as bre
 on odr.order_ID = bre.order_ID
 where odr.ADVANCE_FLAG = 1
 and odr.DEAL_FLAG = 1 #已成交
 AND odr.SPECIFY_FLAG = 0 #非指定摘单
 and delist.DELIST_STATE = 1 #成功摘单
 and odr.CREATED_TIME >= DATE('2018-06-01') #预付上线时间
-and odr.CREATED_TIME <= DATE('2019-07-24')
+and odr.CREATED_TIME <= DATE('2019-07-31')
 and (datediff(csns.CONSIGNOR_SETTLE_TIME,delist.DELIST_TIME) > 10
 or csns.ORDER_ID is NULL)
 
@@ -37,8 +37,8 @@ or (DATEDIFF('20190630',delist_time) <= 40 and
 and consignor_settle_time >= '20190601'
 and delist_time <= '20190630'
 
-set @kaishi = '20190601';
-set @jieshu = '20190630'
+set @kaishi = '20190701';
+set @jieshu = '20190731'
 
 #10-40
 select count(distinct order_ID), sum(advance_money) 
