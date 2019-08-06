@@ -1,3 +1,4 @@
+#逾期分段表
 drop table if exists hjl_prepay_overdue_1;
 create table hjl_prepay_overdue_1
 select odr.order_ID, adv.ADVANCE_MONEY,delist.delist_time, csns.consignor_settle_time
@@ -29,48 +30,48 @@ end as consignor_settle_time
 from hjl_prepay_overdue_1
 
 # 逾期分段处理
-select * from hjl_prepay_overdue_2
-where datediff(consignor_settle_time,delist_time) > 10
-and (datediff(consignor_settle_time,delist_time) <= 40
-or (DATEDIFF('20190630',delist_time) <= 40 and
- DATEDIFF('20190630',delist_time) >= 10))
-and consignor_settle_time >= '20190601'
-and delist_time <= '20190630'
+select count(distinct order_ID), sum(advance_money)
+from hjl_prepay_overdue_2
+where DATEDIFF(@jieshu,delist_time) <= 40
+and DATEDIFF(@jieshu,delist_time) > 10
+and DATEDIFF(@jieshu, delist_time) > 10
+and consignor_settle_time >= @kaishi
+and delist_time <= @jieshu
 
 set @kaishi = '20190701';
 set @jieshu = '20190731'
 
 #10-40
-select count(distinct order_ID), sum(advance_money) 
+select count(distinct order_ID), sum(advance_money)
 from hjl_prepay_overdue_2
-where datediff(consignor_settle_time,delist_time) > 10
-and (datediff(consignor_settle_time,delist_time) <= 40
-or (DATEDIFF(@jieshu, delist_time) <= 40 and
- DATEDIFF(@jieshu, delist_time) >= 10))
+where DATEDIFF(@jieshu,delist_time) <= 40
+and DATEDIFF(@jieshu,delist_time) > 10
+and DATEDIFF(@jieshu, delist_time) > 10
 and consignor_settle_time >= @kaishi
 and delist_time <= @jieshu
+
 #40-70
-select count(distinct order_ID), sum(advance_money) 
+select count(distinct order_ID), sum(advance_money)
 from hjl_prepay_overdue_2
-where datediff(consignor_settle_time,delist_time) > 40
-and (datediff(consignor_settle_time,delist_time) <= 70
-or (DATEDIFF(@jieshu,delist_time) <= 70 and
- DATEDIFF(@jieshu,delist_time) >= 40))
+where DATEDIFF(@jieshu,delist_time) <= 70
+and DATEDIFF(@jieshu,delist_time) > 40
+and DATEDIFF(@jieshu, delist_time) > 40
 and consignor_settle_time >= @kaishi
 and delist_time <= @jieshu
+
 #70-100
-select count(distinct order_ID), sum(advance_money) 
+select count(distinct order_ID), sum(advance_money)
 from hjl_prepay_overdue_2
-where datediff(consignor_settle_time,delist_time) > 70
-and (datediff(consignor_settle_time,delist_time) <= 100
-or (DATEDIFF(@jieshu,delist_time) <= 100 and
- DATEDIFF(@jieshu,delist_time) >= 70))
+where DATEDIFF(@jieshu,delist_time) <= 100
+and DATEDIFF(@jieshu,delist_time) > 70
+and DATEDIFF(@jieshu, delist_time) > 70
 and consignor_settle_time >= @kaishi
 and delist_time <= @jieshu
+
 #>100
 select count(distinct order_ID), sum(advance_money) 
 from hjl_prepay_overdue_2
 where datediff(consignor_settle_time,delist_time) > 100
-and DATEDIFF(@jieshu,delist_time) >= 100
+and DATEDIFF(@jieshu,delist_time) > 100
 and consignor_settle_time >= @kaishi
 and delist_time <= @jieshu
