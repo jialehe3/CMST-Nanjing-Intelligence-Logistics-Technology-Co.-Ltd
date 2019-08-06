@@ -102,18 +102,17 @@ from hjl_prepay07
 
 !!!!! set @starttime = '2018-06-01' !!!!!
 
-set @kaishi = '20181201';
-set @jieshu = '20181231'
+set @kaishi = '20190101';
+set @jieshu = '20190131'
 
 #逾期单量和金额查询
 select pp8.order_ID ,adv.ADVANCE_MONEY, pp8.breach_start_time, pp8.return_time
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 7
-and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 37
-or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 37 and
- DATEDIFF(@jieshu,pp8.breach_start_time) >= 7))
+where DATEDIFF(@jieshu,pp8.breach_start_time) <= 67 
+and DATEDIFF(@jieshu,pp8.breach_start_time) >= 37
+and DATEDIFF(pp8.return_time,pp8.breach_start_time) > 37
 and pp8.return_time >= @kaishi
 and pp8.breach_start_time <= @jieshu
 
@@ -132,65 +131,60 @@ select * from hjl_prepay08
 where order_ID = '911905010539231160'
 
 #逾期均单和金额1-30天，7天缓期
-select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+select count(distinct pp8.order_ID),sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 7
-and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 37
-or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 37 and
- DATEDIFF(@jieshu,pp8.breach_start_time) >= 7))
+where DATEDIFF(@jieshu,pp8.breach_start_time) <= 37 
+and DATEDIFF(@jieshu,pp8.breach_start_time) > 7
+and DATEDIFF(pp8.return_time,pp8.breach_start_time) >7
 and pp8.return_time >= @kaishi
 and pp8.breach_start_time <= @jieshu
 
 #30-60天 +7
-select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+select count(distinct pp8.order_ID),sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 37
-and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 67
-or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 67 and
- DATEDIFF(@jieshu,pp8.breach_start_time) >= 37))
-and pp8.return_time >= @jieshu
-and pp8.breach_start_time <= @jieshu
-
-# 60-90天 +7
-select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
-from hjl_prepay08 as pp8
-inner join ods_oms_tf_b_order_advance as adv
-using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 67
-and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 97
-or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 97 and
- DATEDIFF(@jieshu,pp8.breach_start_time) >= 67))
+where DATEDIFF(@jieshu,pp8.breach_start_time) <= 67 
+and DATEDIFF(@jieshu,pp8.breach_start_time) > 37
+and DATEDIFF(pp8.return_time,pp8.breach_start_time) >37
 and pp8.return_time >= @kaishi
 and pp8.breach_start_time <= @jieshu
 
-set @kaishi = '20190301';
-set @jieshu = '20190331'
-
-#90-120 +7
-select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+# 60-90天 +7
+select count(distinct pp8.order_ID),sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 97
-and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 127
-or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 127 and
- DATEDIFF(@jieshu,pp8.breach_start_time) >= 97))
+where DATEDIFF(@jieshu,pp8.breach_start_time) <= 97 
+and DATEDIFF(@jieshu,pp8.breach_start_time) > 67
+and DATEDIFF(pp8.return_time,pp8.breach_start_time) >67
+and pp8.return_time >= @kaishi
+and pp8.breach_start_time <= @jieshu
+
+set @kaishi = '20180901';
+set @jieshu = '20180930'
+
+#90-120 +7
+select count(distinct pp8.order_ID),sum(adv.ADVANCE_MONEY)
+from hjl_prepay08 as pp8
+inner join ods_oms_tf_b_order_advance as adv
+using (order_ID)
+where DATEDIFF(@jieshu,pp8.breach_start_time) <= 127 
+and DATEDIFF(@jieshu,pp8.breach_start_time) > 97
+and DATEDIFF(pp8.return_time,pp8.breach_start_time) >97
 and pp8.return_time >= @kaishi
 and pp8.breach_start_time <= @jieshu
 
 # 120-150 +7
-select count(distinct pp8.order_ID), sum(adv.ADVANCE_MONEY)
+select count(distinct pp8.order_ID),sum(adv.ADVANCE_MONEY)
 from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
-where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 127
-and (DATEDIFF(pp8.return_time,pp8.breach_start_time) <= 157
-or (DATEDIFF(@jieshu,pp8.breach_start_time) <= 157 and
- DATEDIFF(@jieshu,pp8.breach_start_time) >= 127))
+where DATEDIFF(@jieshu,pp8.breach_start_time) <= 157 
+and DATEDIFF(@jieshu,pp8.breach_start_time) > 127
+and DATEDIFF(pp8.return_time,pp8.breach_start_time) >127
 and pp8.return_time >= @kaishi
 and pp8.breach_start_time <= @jieshu
 
@@ -200,7 +194,7 @@ from hjl_prepay08 as pp8
 inner join ods_oms_tf_b_order_advance as adv
 using (order_ID)
 where DATEDIFF(pp8.return_time,pp8.breach_start_time) > 157
-and DATEDIFF(@jieshu,pp8.breach_start_time) >= 157
+and DATEDIFF(@jieshu,pp8.breach_start_time) > 157
 and pp8.return_time >= @kaishi
 and pp8.breach_start_time <= @jieshu
 
