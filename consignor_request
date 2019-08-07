@@ -1,0 +1,144 @@
+#所有货主user_id
+drop table if exists hjl_consignor_ID;
+create table hjl_consignor_ID
+select t1.user_id,t1.created_time as rgst_time,t2.customer_id,t2.company_name
+from (SELECT * from ods_tf_f_user where user_type = '1' and delete_flag = '0') t1
+left join (select * from ods_tf_f_customer 
+where company_name NOT regexp 'ceshi' and company_name NOT regexp '测试') t2 on t1.customer_id = t2.customer_id
+
+drop table if exists hjl_csn_cus;
+create table hjl_csn_cus as 
+select customer_id, industry, company_name 
+from ods_tf_f_customer
+
+drop table if exists hjl_csn_usr;
+create table hjl_csn_usr as 
+select user_id, CUSTOMER_ID, user_level, register_system, created_time, user_type
+from ods_tf_f_user 
+where user_type =1
+
+drop table if exists hjl_csn_odr;
+create table hjl_csn_odr as
+select odr.* from hjl_consignor_ID as c_id
+inner join 
+(SELECT * FROM ods_oms_order 
+WHERE deal_flag = '1' AND DATE(CREATED_TIME) BETWEEN '2018-01-01' AND '2019-08-02') odr
+on c_id.user_id = odr.consignor_user_id
+
+DROP TABLE IF EXISTS hjl_csn_deal;
+CREATE table hjl_csn_deal as
+select DISTINCT CONSIGNOR_USER_ID FROM hjl_csn_odr 
+WHERE CONSIGNOR_STATE = 7 AND DATE(CREATED_TIME) BETWEEN '2018-01-01' AND '2019-08-02';
+
+#货主对应订单单号和生成时间
+drop table if exists hjl_csn_base1;
+create table hjl_csn_base1
+select 
+d_id.consignor_user_id,
+odr.consignor_customer_id,
+odr.order_id,
+odr.created_time as odr_created_time
+from hjl_csn_deal as d_id
+inner join 
+(SELECT * FROM ods_oms_order 
+WHERE deal_flag = '1' AND DATE(CREATED_TIME) BETWEEN '2018-01-01' AND '2019-08-02') odr
+on d_id.consignor_user_id = odr.consignor_user_id
+
+drop table if exists hjl_consignor_ID_2;
+create table hjl_consignor_ID_2
+select DISTINCT consignor_customer_id from hjl_csn_base1
+
+#货主user_id,cus_id以及其他用户属性和注册时间
+drop table if exists hjl_csn_base2;
+create table hjl_csn_base2 as
+select
+usr.user_id,
+id.consignor_customer_id,
+usr.user_level,
+usr.register_system,
+usr.created_time as rgst_time
+from hjl_consignor_ID_2 as id
+inner join 
+hjl_csn_usr as usr on id.consignor_customer_id = usr.customer_ID
+
+#货主user_id,cus_id以及顾客属性和公司名
+drop table if exists hjl_csn_base3;
+create table hjl_csn_base3 as
+select
+b2.user_id,
+b2.consignor_customer_id,
+cus.industry,
+cus.company_name
+from hjl_csn_base2 as b2
+inner join hjl_csn_cus as cus
+on b2.consignor_customer_id = cus.customer_ID
+
+
+drop table if EXISTS hjl_csn_base4;
+create table hjl_csn_base4 as
+select
+b1.consignor_user_id,
+b1.consignor_customer_id,
+b1.order_id,
+attri.payment_flag,
+accbk.credit_quota
+from(
+hjl_csn_base1 as b1
+inner join
+ods_tf_b_order_attribute as attri on b1.order_ID = attri.order_ID)
+inner join
+ods_tf_f_account_book as accbk on b1.consignor_user_ID = accbk.user_ID
+
+select 
+consignor_customer_id,
+sum(payment_flag)
+from hjl_csn_base4
+group by consignor_customer_id
+
+
+drop table if exists hjl_csn_recent_order;
+create table hjl_csn_maxt_order as
+select c_id.user_ID, max(fin.create_time) as recent_order 
+from hjl_consignor_ID as c_id
+left join ods_tf_b_finance_ord as fin
+on c_id.user_ID = fin.user_ID
+GROUP BY c_id.user_ID
+
+
+select maxt.user_ID, fin.order_ID, SUBSTRING_INDEX(fin.account_result,':',-1) as 30_quota 
+from hjl_csn_maxt_order as maxt
+left join ods_tf_b_finance_ord as fin
+on maxt.user_ID = fin.user_ID
+where maxt.recent_order is not null
+where DATEDIFF(max(fin.CREATE_TIME),fin.create_time) <= 30
+GROUP BY maxt.user_ID
+
+
+
+
+
+
+
+
+
+
+
+select
+c_id.user_ID,
+attri.payment_flag,
+accbk.credit_quota,
+accbk.credit_quota - SUBSTRING_INDEX(fin.account_result,':',-1) as ava_quota,
+sum(SUBSTRING_INDEX(fin.account_result,':',-1)) as tot_quota,
+q1.30_quota
+
+FROM((((
+ods_tf_b_order_attribute as attri
+inner join 
+ods_tf_b_finance_ord as fin on fin.order_ID = attri.order_ID)
+inner join
+ods_tf_f_account_book as accbk on fin.user_ID = accbk.user_ID)
+inner join
+hjl_consignor_id as c_id on fin.user_id = c_id.user_ID
+(select user_ID, sum(SUBSTRING_INDEX(account_result,':',-1)) as 30_quota from ods_tf_b_finance_ord 
+where DATEDIFF('20190806',create_time) < 30
+GROUP BY user_ID) as q1 on fin.user_ID = q1.user_ID)
