@@ -22,13 +22,13 @@ create table hjl_csn_odr as
 select odr.* from hjl_consignor_ID as c_id
 inner join 
 (SELECT * FROM ods_oms_order 
-WHERE deal_flag = '1' AND DATE(CREATED_TIME) BETWEEN '2018-01-01' AND '2019-08-02') odr
+WHERE deal_flag = '1') odr
 on c_id.user_id = odr.consignor_user_id
 
 DROP TABLE IF EXISTS hjl_csn_deal;
 CREATE table hjl_csn_deal as
 select DISTINCT CONSIGNOR_USER_ID FROM hjl_csn_odr 
-WHERE CONSIGNOR_STATE = 7 AND DATE(CREATED_TIME) BETWEEN '2018-01-01' AND '2019-08-02';
+WHERE CONSIGNOR_STATE = 7;
 
 #货主对应订单单号和生成时间
 drop table if exists hjl_csn_base1;
@@ -41,7 +41,7 @@ odr.created_time as odr_created_time
 from hjl_csn_deal as d_id
 inner join 
 (SELECT * FROM ods_oms_order 
-WHERE deal_flag = '1' AND DATE(CREATED_TIME) BETWEEN '2018-01-01' AND '2019-08-02') odr
+WHERE deal_flag = '1') odr
 on d_id.consignor_user_id = odr.consignor_user_id
 
 drop table if exists hjl_consignor_ID_2;
@@ -89,56 +89,51 @@ ods_tf_b_order_attribute as attri on b1.order_ID = attri.order_ID)
 inner join
 ods_tf_f_account_book as accbk on b1.consignor_user_ID = accbk.user_ID
 
-select 
+#货主是否为托管用户（有过托管行为）
+drop table if exists hjl_csn_trust;
+create table hjl_csn_trust as
+select t1.customer_consignor_id, sum(t1.have_trust) as have_trust from
+(select b1.order_id, aodr.user_id, aodr.customer_consignor_id, aodr.have_trust
+from hjl_csn_base1 as b1
+inner join ods_ams_order as aodr on b1.order_id = aodr.order_id) t1 GROUP BY t1.customer_consignor_id
+
+
+drop table if exists hjl_csn_base5;
+create table hjl_csn_base5 as 
+select t1.consignor_customer_id, 
+case when t1.payment_flag > 0 then 1 else 0 end as payment_flag,
+case when t2.have_trust >0 then 1 else 0 end as have_trust
+from
+(select
 consignor_customer_id,
-sum(payment_flag)
+sum(payment_flag) as payment_flag
 from hjl_csn_base4
-group by consignor_customer_id
+group by consignor_customer_id) as t1
+inner join
+hjl_csn_trust as t2 on t1.consignor_customer_id = t2.customer_consignor_id
 
 
-drop table if exists hjl_csn_recent_order;
-create table hjl_csn_maxt_order as
-select c_id.user_ID, max(fin.create_time) as recent_order 
-from hjl_consignor_ID as c_id
-left join ods_tf_b_finance_ord as fin
-on c_id.user_ID = fin.user_ID
-GROUP BY c_id.user_ID
-
-
-select maxt.user_ID, fin.order_ID, SUBSTRING_INDEX(fin.account_result,':',-1) as 30_quota 
-from hjl_csn_maxt_order as maxt
-left join ods_tf_b_finance_ord as fin
-on maxt.user_ID = fin.user_ID
-where maxt.recent_order is not null
-where DATEDIFF(max(fin.CREATE_TIME),fin.create_time) <= 30
-GROUP BY maxt.user_ID
-
-
-
-
-
-
-
-
-
-
-
+drop table if exists hjl_csn_basic_info;
+create table hjl_csn_basic_info as
 select
-c_id.user_ID,
-attri.payment_flag,
-accbk.credit_quota,
-accbk.credit_quota - SUBSTRING_INDEX(fin.account_result,':',-1) as ava_quota,
-sum(SUBSTRING_INDEX(fin.account_result,':',-1)) as tot_quota,
-q1.30_quota
-
-FROM((((
-ods_tf_b_order_attribute as attri
+b2.user_id,
+b2.consignor_customer_id,
+b3.industry,
+b2.user_level,
+b2.register_system,
+b2.rgst_time,
+t1.first_order_time,
+b5.have_trust,
+b5.payment_flag,
+t3.max_quota
+from((( hjl_csn_base2 as b2
+inner join hjl_csn_base3 as b3 
+on b2.consignor_customer_id = b3.consignor_customer_id)
+inner join (select consignor_customer_id, max(credit_quota) as max_quota from hjl_csn_base4 group by consignor_customer_id) as t3 
+on b2.consignor_customer_id = t3.consignor_customer_id)
+inner join hjl_csn_base5 as b5 
+on b2.consignor_customer_id = b5.consignor_customer_id)
 inner join 
-ods_tf_b_finance_ord as fin on fin.order_ID = attri.order_ID)
-inner join
-ods_tf_f_account_book as accbk on fin.user_ID = accbk.user_ID)
-inner join
-hjl_consignor_id as c_id on fin.user_id = c_id.user_ID
-(select user_ID, sum(SUBSTRING_INDEX(account_result,':',-1)) as 30_quota from ods_tf_b_finance_ord 
-where DATEDIFF('20190806',create_time) < 30
-GROUP BY user_ID) as q1 on fin.user_ID = q1.user_ID)
+(select consignor_customer_id, min(odr_created_time) as first_order_time 
+from hjl_csn_base1 GROUP BY consignor_customer_id) t1 
+on b2.consignor_customer_id = t1.consignor_customer_id
