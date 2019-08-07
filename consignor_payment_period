@@ -1,0 +1,63 @@
+drop table if exists hjl_csn_recent_order;
+create table hjl_csn_recent_order as
+select b1.consignor_customer_id, max(b1.odr_created_time) as recent_order 
+from hjl_csn_base1 as b1
+GROUP BY b1.consignor_customer_id
+
+#单笔订单放款量
+drop table if exists hjl_csn_odr_quota;
+create table hjl_csn_odr_quota
+select b1.consignor_customer_id, b1.order_id, SUBSTRING_INDEX(fin.account_result,':',-1) as odr_quota 
+from hjl_csn_base1 as b1 
+inner join ods_tf_b_finance_ord as fin 
+on b1.order_id = fin.order_id
+
+#总放款量
+select b1.consignor_customer_id, sum(qt.odr_quota) as tot_quota
+from hjl_csn_base1 as b1
+inner join hjl_csn_odr_quota as qt on b1.consignor_customer_id = qt.consignor_customer_id
+group by  b1.consignor_customer_id
+
+#最近30天放款量
+select b1.consignor_customer_id, 
+case when qt.odr_quota
+from hjl_csn_base1 as b1
+inner join hjl_csn_odr_quota as qt
+where 
+
+
+select rct.consignor_customer_id, 
+case when 
+count SUBSTRING_INDEX(fin.account_result,':',-1) as 30_quota 
+from hjl_csn_maxt_order as maxt
+left join ods_tf_b_finance_ord as fin
+on maxt.user_ID = fin.user_ID
+where maxt.recent_order is not null
+where DATEDIFF(max(fin.CREATE_TIME),fin.create_time) <= 30
+GROUP BY maxt.user_ID
+
+
+
+
+
+
+
+select
+c_id.user_ID,
+attri.payment_flag,
+accbk.credit_quota,
+accbk.credit_quota - SUBSTRING_INDEX(fin.account_result,':',-1) as ava_quota,
+sum(SUBSTRING_INDEX(fin.account_result,':',-1)) as tot_quota,
+q1.30_quota
+
+FROM((((
+ods_tf_b_order_attribute as attri
+inner join 
+ods_tf_b_finance_ord as fin on fin.order_ID = attri.order_ID)
+inner join
+ods_tf_f_account_book as accbk on fin.user_ID = accbk.user_ID)
+inner join
+hjl_consignor_id as c_id on fin.user_id = c_id.user_ID
+(select user_ID, sum(SUBSTRING_INDEX(account_result,':',-1)) as 30_quota from ods_tf_b_finance_ord 
+where DATEDIFF('20190806',create_time) < 30
+GROUP BY user_ID) as q1 on fin.user_ID = q1.user_ID)
