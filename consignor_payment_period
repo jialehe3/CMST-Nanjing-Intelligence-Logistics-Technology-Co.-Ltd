@@ -4,60 +4,99 @@ select b1.consignor_customer_id, max(b1.odr_created_time) as recent_order
 from hjl_csn_base1 as b1
 GROUP BY b1.consignor_customer_id
 
-#单笔订单放款量
+#单笔订单放款金额
 drop table if exists hjl_csn_odr_quota;
 create table hjl_csn_odr_quota
-select b1.consignor_customer_id, b1.order_id, SUBSTRING_INDEX(fin.account_result,':',-1) as odr_quota 
+select b1.consignor_user_id, b1.consignor_customer_id, b1.order_id, fin.create_time, SUBSTRING_INDEX(fin.account_result,':',-1) as odr_quota 
 from hjl_csn_base1 as b1 
 inner join ods_tf_b_finance_ord as fin 
-on b1.order_id = fin.order_id
+on b1.order_id = fin.order_id and b1.consignor_user_id = fin.user_id
+where fin.user_type = 2
+and fin.FINANCE_TYPE = 2
+and fin.OPERATE_TYPE = 6
 
-#总放款量
-select b1.consignor_customer_id, sum(qt.odr_quota) as tot_quota
-from hjl_csn_base1 as b1
-inner join hjl_csn_odr_quota as qt on b1.consignor_customer_id = qt.consignor_customer_id
-group by  b1.consignor_customer_id
+create index index_consignor_user_id on hjl_csn_odr_quota(consignor_user_id)
+create index index_consignor_customer_id on hjl_csn_odr_quota(consignor_customer_id)
+create index index_order_id on hjl_csn_odr_quota(order_id)
+create index index_odr_created_time on hjl_csn_odr_quota(odr_created_time)
+create index index_odr_quota on hjl_csn_odr_quota(odr_quota)
+
+#总放款单量
+drop table if exists hjl_csn_quota_no_tot;
+create table hjl_csn_quota_no_tot
+select consignor_customer_id, count(distinct order_ID) as quota_no_tot
+from hjl_csn_odr_quota
+where odr_quota < 0
+and odr_quota is not null
+group by consignor_customer_id
+#近30天放款单量
+drop table if exists hjl_csn_quota_no_30;
+create table hjl_csn_quota_no_30
+select consignor_customer_id, count(distinct order_ID) as quota_no_30
+from hjl_csn_odr_quota
+where DATEDIFF("20190801",odr_created_time) <= 30
+and odr_quota < 0
+group by consignor_customer_id
+#90
+drop table if exists hjl_csn_quota_no_90;
+create table hjl_csn_quota_no_90
+select consignor_customer_id, count(distinct order_ID) as quota_no_90
+from hjl_csn_odr_quota
+where DATEDIFF("20190801",odr_created_time) <= 90
+and odr_quota < 0
+group by consignor_customer_id
+#180
+drop table if exists hjl_csn_quota_no_180;
+create table hjl_csn_quota_no_180
+select consignor_customer_id, count(distinct order_ID) as quota_no_180
+from hjl_csn_odr_quota
+where DATEDIFF("20190801",odr_created_time) <= 180
+and odr_quota < 0
+group by consignor_customer_id
+#360
+drop table if exists hjl_csn_quota_no_360;
+create table hjl_csn_quota_no_360
+select consignor_customer_id, count(distinct order_ID) as quota_no_360
+from hjl_csn_odr_quota
+where DATEDIFF("20190801",odr_created_time) <= 360
+and odr_quota < 0
+group by consignor_customer_id
+
+#总放款金额
+drop table if exists hjl_csn_odr_quota_tot;
+create table hjl_csn_odr_quota_tot
+select consignor_customer_id, sum(odr_quota) as tot_quota
+from hjl_csn_odr_quota
+group by consignor_customer_id
+
+SELECT * from ods_tf_b_finance_ord
+where SUBSTRING_INDEX(account_result,':',-1) > -0
 
 #最近30天放款量
-select b1.consignor_customer_id, 
-case when qt.odr_quota
-from hjl_csn_base1 as b1
-inner join hjl_csn_odr_quota as qt
-where 
-
-
-select rct.consignor_customer_id, 
-case when 
-count SUBSTRING_INDEX(fin.account_result,':',-1) as 30_quota 
-from hjl_csn_maxt_order as maxt
-left join ods_tf_b_finance_ord as fin
-on maxt.user_ID = fin.user_ID
-where maxt.recent_order is not null
-where DATEDIFF(max(fin.CREATE_TIME),fin.create_time) <= 30
-GROUP BY maxt.user_ID
-
-
-
-
-
-
-
-select
-c_id.user_ID,
-attri.payment_flag,
-accbk.credit_quota,
-accbk.credit_quota - SUBSTRING_INDEX(fin.account_result,':',-1) as ava_quota,
-sum(SUBSTRING_INDEX(fin.account_result,':',-1)) as tot_quota,
-q1.30_quota
-
-FROM((((
-ods_tf_b_order_attribute as attri
-inner join 
-ods_tf_b_finance_ord as fin on fin.order_ID = attri.order_ID)
-inner join
-ods_tf_f_account_book as accbk on fin.user_ID = accbk.user_ID)
-inner join
-hjl_consignor_id as c_id on fin.user_id = c_id.user_ID
-(select user_ID, sum(SUBSTRING_INDEX(account_result,':',-1)) as 30_quota from ods_tf_b_finance_ord 
-where DATEDIFF('20190806',create_time) < 30
-GROUP BY user_ID) as q1 on fin.user_ID = q1.user_ID)
+drop table if exists hjl_csn_odr_quota_30;
+create table hjl_csn_odr_quota_30
+select consignor_customer_id, sum(odr_quota) as quota_30 
+from hjl_csn_odr_quota
+where DATEDIFF("20190801",odr_created_time) <= 30
+GROUP BY consignor_customer_id
+#90
+drop table if exists hjl_csn_odr_quota_90;
+create table hjl_csn_odr_quota_90
+select consignor_customer_id, sum(odr_quota) as quota_90 
+from hjl_csn_odr_quota
+where DATEDIFF("20190801",odr_created_time) <= 90
+GROUP BY consignor_customer_id
+#180
+drop table if exists hjl_csn_odr_quota_180;
+create table hjl_csn_odr_quota_180
+select consignor_customer_id, sum(odr_quota) as quota_180 
+from hjl_csn_odr_quota
+where DATEDIFF("20190801",odr_created_time) <= 180
+GROUP BY consignor_customer_id
+#
+drop table if exists hjl_csn_odr_quota_360;
+create table hjl_csn_odr_quota_360
+select consignor_customer_id, sum(odr_quota) as quota_360 
+from hjl_csn_odr_quota
+where DATEDIFF("20190801",odr_created_time) <= 360
+GROUP BY consignor_customer_id
