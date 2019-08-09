@@ -1,0 +1,162 @@
+drop table if exists hjl_csn_order_detail_1;
+create table hjl_csn_order_detail_1
+select 
+b1.consignor_user_id, 
+b1.consignor_customer_id, 
+b1.order_ID, 
+delist.delist_time,
+odr.PB_consignor_money
+from( hjl_csn_base1 as b1
+inner JOIN ods_tf_b_order_delist as delist on b1.order_id = delist.order_id)
+inner join ods_oms_order as odr on b1.order_id = odr.order_id
+
+drop table if exists hjl_csn_order_detail_2;
+create table hjl_csn_order_detail_2
+select d1.*, count(distinct cargo.layer2_id) as cargo_type_no
+from hjl_csn_order_detail_1 as d1
+inner join ods_tf_b_cargo as cargo on d1.order_id = cargo.order_ID
+GROUP BY d1.order_id
+#cargo.layer2_id,#csns.CONSIGNOR_SETTLE_STATE
+
+#最早最近成绩日距离今天天数
+drop table if exists hjl_csn_odr_maxmin;
+create table hjl_csn_odr_maxmin
+select consignor_customer_id, datediff("20190802",max(delist_time)) as latest_to_today ,datediff("20190802", min(delist_time)) as earliest_to_today
+from hjl_csn_order_detail_2
+group by consignor_customer_id
+
+
+
+#360天内货物类型为2，3，5，10 单量 （需求理解错误，这个没有用）
+drop table if exists hjl_csn_ctype_no;
+create table hjl_csn_ctype_no
+select consignor_customer_id, 
+count(if(cargo_type_no =2,true,null)) as ctype_2,
+count(if(cargo_type_no =3,true,null)) as ctype_3,
+count(if(cargo_type_no =5,true,null)) as ctype_5,
+count(if(cargo_type_no =10,true,null)) as ctype_10
+from hjl_csn_order_detail_2
+where datediff("20190801",delist_time) <= 360
+group by consignor_customer_id
+
+#每个货主每种货物运了多少单
+drop table if exists hjl_csn_cargo_type;
+create table hjl_csn_cargo_type
+select d2.consignor_customer_id, cargo.layer2_ID, count(distinct d2.order_id) as odr_no
+from hjl_csn_order_detail_2 as d2
+inner join ods_tf_b_cargo as cargo on d2.order_ID = cargo.order_id
+where datediff("20190801",delist_time) <= 360
+group by d2.consignor_customer_id,cargo.layer2_ID having count(distinct d2.order_id)>2
+
+#订单量大于2，3，5，10单的货物的类型数量
+drop table if exists hjl_csn_cargo_type_no;
+create table hjl_csn_cargo_type_no
+select t1.consignor_customer_id, t1.cargo_type_no_2, t2.cargo_type_no_3, t3.cargo_type_no_5, cargo_type_no_10
+from((
+(select consignor_customer_id, count(distinct layer2_ID) as cargo_type_no_2
+from hjl_csn_cargo_type
+where odr_no >2
+GROUP BY consignor_customer_id) t1
+inner join
+(select consignor_customer_id, count(distinct layer2_ID) as cargo_type_no_3
+from hjl_csn_cargo_type
+where odr_no >3
+GROUP BY consignor_customer_id) t2 on t1.consignor_customer_id = t2.consignor_customer_id)
+inner join
+(select consignor_customer_id, count(distinct layer2_ID) as cargo_type_no_5
+from hjl_csn_cargo_type
+where odr_no >5
+GROUP BY consignor_customer_id) t3 on t1.consignor_customer_id = t3.consignor_customer_id)
+inner join
+(select consignor_customer_id, count(distinct layer2_ID) as cargo_type_no_10
+from hjl_csn_cargo_type
+where odr_no >10
+GROUP BY consignor_customer_id) t4 on t1.consignor_customer_id = t4.consignor_customer_id
+
+#近x天成交订单量和金额
+drop table if exists hjl_csn_delist;
+create table hjl_csn_delist
+select consignor_customer_id, 
+count(distinct order_ID) as delist_tot,
+sum(PB_consignor_money) as delist_tot_money,
+count(if(datediff("20190801",delist_time) <= 15,true,null)) as delist_15,
+sum(if(datediff("20190801",delist_time) <= 15,PB_consignor_money,null)) as delist_15_money,
+count(if(datediff("20190801",delist_time) <= 30,true,null)) as delist_30,
+sum(if(datediff("20190801",delist_time) <= 30,PB_consignor_money,null)) as delist_30_money,
+count(if(datediff("20190801",delist_time) <= 90,true,null)) as delist_90,
+sum(if(datediff("20190801",delist_time) <= 90,PB_consignor_money,null)) as delist_90_money,
+count(if(datediff("20190801",delist_time) <= 180,true,null)) as delist_180,
+sum(if(datediff("20190801",delist_time) <= 180,PB_consignor_money,null)) as delist_180_money,
+count(if(datediff("20190801",delist_time) <= 360,true,null)) as delist_360,
+sum(if(datediff("20190801",delist_time) <= 360,PB_consignor_money,null)) as delist_360_money,
+(count(if(datediff("20190801",delist_time) <= 360,true,null)))/12 as delist_360_avg,
+(sum(if(datediff("20190801",delist_time) <= 360,PB_consignor_money,null)))/12 as delist_360_money_avg,
+count(if(datediff("20190801",delist_time) > 360,true,null)) as delist_x
+from hjl_csn_order_detail_2
+group by consignor_customer_id
+
+drop table if exists hjl_csn_order_detail_3;
+create table hjl_csn_order_detail_3 as
+select d2.consignor_customer_id, d2.order_ID, d2.PB_consignor_money, csns.consignor_settle_time
+from hjl_csn_order_detail_2 as d2
+inner join ods_oms_consignor_state as csns on d2.order_ID = csns.order_ID
+where CONSIGNOR_SETTLE_STATE = 1
+
+#近x天结算订单量和金额
+drop table if exists hjl_csn_settle;
+create table hjl_csn_settle
+select consignor_customer_id, 
+count(distinct order_ID) as settle_tot,
+sum(PB_consignor_money) as settle_tot_money,
+count(if(datediff("20190801",consignor_settle_time) <= 15,true,null)) as settle_15,
+sum(if(datediff("20190801",consignor_settle_time) <= 15,PB_consignor_money,null)) as settle_15_money,
+count(if(datediff("20190801",consignor_settle_time) <= 30,true,null)) as settle_30,
+sum(if(datediff("20190801",consignor_settle_time) <= 30,PB_consignor_money,null)) as settle_30_money,
+count(if(datediff("20190801",consignor_settle_time) <= 90,true,null)) as settle_90,
+sum(if(datediff("20190801",consignor_settle_time) <= 90,PB_consignor_money,null)) as settle_90_money,
+count(if(datediff("20190801",consignor_settle_time) <= 180,true,null)) as settle_180,
+sum(if(datediff("20190801",consignor_settle_time) <= 180,PB_consignor_money,null)) as settle_180_money,
+count(if(datediff("20190801",consignor_settle_time) <= 360,true,null)) as settle_360,
+sum(if(datediff("20190801",consignor_settle_time) <= 360,PB_consignor_money,null)) as settle_360_money,
+(count(if(datediff("20190801",consignor_settle_time) <= 360,true,null)))/12 as settle_360_avg,
+(sum(if(datediff("20190801",consignor_settle_time) <= 360,PB_consignor_money,null)))/12 as settle_360_money_avg,
+count(if(datediff("20190801",consignor_settle_time) > 360,true,null)) as settle_x,
+from hjl_csn_order_detail_3
+group by consignor_customer_id
+
+# 180天 360天最大订单金额
+drop table if exists hjl_csn_max;
+create table hjl_csn_max as
+select t1.consignor_customer_id, t1.max_180, t2.max_360
+from
+(select consignor_customer_id, max(PB_consignor_money) as max_180
+from hjl_csn_order_detail_2
+where datediff("20190801",delist_time) <= 180
+group by consignor_customer_id) t1
+left join 
+(select consignor_customer_id, max(PB_consignor_money) as max_360
+from hjl_csn_order_detail_2
+where datediff("20190801",delist_time) <= 360
+group by consignor_customer_id) t2
+on t1.consignor_customer_id = t2.consignor_customer_id
+
+#在途订单量和金额
+drop table if exists hjl_csn_OTW;
+create table hjl_csn_OTW
+select d2.consignor_customer_id, count(distinct d2.order_ID) as on_the_way_no, sum(d2.PB_consignor_Money) as on_the_way_money
+from (hjl_csn_order_detail_2 as d2
+inner join ods_oms_order as odr on d2.order_ID = odr.order_ID)
+inner join ods_tf_b_transport as tsp on d2.order_ID = tsp.order_ID
+where odr.consignor_state = 6 and tsp.end_time is null #已确认发货而没有收货时间
+group by d2.consignor_customer_id
+
+#待结算订单量和金额
+drop table if exists hjl_csn_notend;
+create table hjl_csn_notend
+select d2.consignor_customer_id, count(distinct d2.order_ID) as not_end_no, sum(d2.PB_consignor_Money) as not_end_money
+from (hjl_csn_order_detail_2 as d2
+inner join ods_oms_order as odr on d2.order_ID = odr.order_ID)
+inner join ods_oms_consignor_state as csns on d2.order_id = csns.order_id
+where odr.consignor_state = 7 #已确认收货
+and csns.CONSIGNOR_SETTLE_STATE = 0 #没有结算
+GROUP BY d2.consignor_customer_id
